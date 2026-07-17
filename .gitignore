@@ -1,0 +1,7 @@
+# Python
+__pycache__/
+*.pyc
+
+# Scratch (throwaway working data — anywhere in the tree)
+_probe.py
+**/scratch/

@@ -1,0 +1,10 @@
+{
+  "servers": {
+    "scout": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["-m", "scout.server"],
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}

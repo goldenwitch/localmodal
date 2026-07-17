@@ -1,0 +1,5 @@
+# Downloaded paper PDFs are reproducible via fetch_papers.py; don't commit them.
+pdf/
+
+# Semantic search index is rebuildable from the sources via search.py.
+.index/

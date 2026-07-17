@@ -1,0 +1,9 @@
+# scout MCP server (agent search tools; see scout/README.md).
+# Pinned to the versions verified working in the source repo (D:/git/JEPA)
+# on Python 3.13.
+mcp==1.27.2
+google-genai==2.8.0
+txtai==9.10.0
+PyMuPDF==1.27.1
+# TLS on Windows for fetch_papers.py (arXiv cert verification):
+certifi==2026.2.25
