@@ -1,8 +1,6 @@
 # scout — search MCP server
 
-Exposes the repo's search surfaces as agent tools over stdio MCP. Copied from
-the JEPA repo's scout (engine verbatim; corpus definitions and steering text
-adapted to this repo).
+Exposes the repo's search surfaces as agent tools over stdio MCP:
 
 | tool | surface | trust |
 |---|---|---|
@@ -67,8 +65,8 @@ including Gemini's.
 ## Worker model (why the corpus tools never import txtai here)
 
 Loading OpenBLAS-backed DLLs inside a threaded async server deadlocks on the
-Windows loader lock (hit in the source repo; py-spy showed `LoadLibraryExW`
-wedged against anyio's stdio reader). So the server talks line-JSON to a
+Windows loader lock (observed live: py-spy showed `LoadLibraryExW` wedged
+against anyio's stdio reader). So the server talks line-JSON to a
 resident worker (`resources/search.py --serve`) that loads both indexes at
 startup and **hot-swaps** the routed one to a new version whenever a rebuild
 publishes one. Each corpus is independent: `resources/.index/papers/` and

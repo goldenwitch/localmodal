@@ -15,12 +15,9 @@ Why semantic and not grep: sources name the same idea in different words
 (adapter / LoRA / fine-tune; warm / provisioned / min_containers). Keyword
 search has a recall hole exactly there.
 
-Engine copied verbatim from D:/git/JEPA resources/search.py (2026-07-17);
-only the corpus definitions (which files feed each index) are this repo's.
-One engine delta, found by smoke test: an EMPTY corpus publishes a sentinel
-version instead of crashing (txtai cannot save a zero-document index), and
-searches on it answer with zero hits -- the papers corpus is legitimately
-empty at repo birth. Candidate backport to the source repo.
+An EMPTY corpus is a lawful state: it publishes a sentinel version (txtai
+cannot save a zero-document index) and searches on it answer with zero
+hits -- the papers corpus is legitimately empty at repo birth.
 
 Usage:
     python search.py "warmth thermostat reconciler"
