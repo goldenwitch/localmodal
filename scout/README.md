@@ -6,6 +6,7 @@ Exposes the repo's search surfaces as agent tools over stdio MCP:
 |---|---|---|
 | `workspace_search` | local txtai index ([resources/search.py](../resources/search.py)) over **our own writing**: the human-owned spec, notes, proposals | our results; prefer it first, hits self-cite, read the file before building on it |
 | `papers_search` | local txtai index over the **third-party papers** (`resources/pdf/`) | the literature; hits self-cite as `paper#page#chunk` |
+| `docs_search` | local txtai index over the **pinned vendor docs** (`resources/modal-docs/`, mirrored from [modal.com/llms.txt](https://modal.com/llms.txt)) | pinned ground with a date + TTL; a stale or absent pin screams at the top of its results |
 | `web_search` | Gemini + Google Search grounding | **untrusted leads** — sanitized, delimited, citations from grounding metadata |
 
 Registered in [.vscode/mcp.json](../.vscode/mcp.json); VS Code starts it on demand.
@@ -61,6 +62,15 @@ every time:
 
 Hugging Face ids are verified by resolving the hub page. Take no one's word —
 including Gemini's.
+
+## Freshness ledger
+
+Pinned sources are stamped in [resources/sources.json](../resources/sources.json)
+by the fetcher that pulls them: fetch date + TTL (`ttl_days: null` = immutable,
+like arXiv PDFs). Once a pin outlives its TTL — or its files go missing — every
+search reply from that corpus opens with a `!!` warning naming the source, the
+overdue days, and the exact refresh command. Consulting a rotten pin and seeing
+the rot are the same event; nothing goes quietly stale.
 
 ## Worker model (why the corpus tools never import txtai here)
 

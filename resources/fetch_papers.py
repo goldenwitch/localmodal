@@ -16,6 +16,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+import freshness
+
 try:
     import certifi
 
@@ -70,6 +72,10 @@ def main(argv: list[str]) -> int:
             download(url, dest)
             size_kb = dest.stat().st_size // 1024
             print(f"ok    {key:24s} {size_kb:>6} KB  <- {url}")
+            # arXiv/OpenReview PDFs are immutable: dated for provenance, no TTL.
+            freshness.stamp(key, corpus="papers", origin=source, ttl_days=None,
+                            artifact=f"pdf/{key}.pdf",
+                            refresh="python resources/fetch_papers.py")
         except (urllib.error.URLError, ValueError, TimeoutError) as exc:
             print(f"FAIL  {key:24s} {url}  ({exc})", file=sys.stderr)
             failures.append(key)

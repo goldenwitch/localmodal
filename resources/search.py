@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Semantic search over the local corpus: papers (resources/pdf/*.pdf) and our
-own writing (human-owned-spec/*.md, notes/**/*.md, proposals/**/*.md, root
-*.md). Two indexes, not one: papers (the third-party PDFs) and workspace
+"""Semantic search over the local corpus: papers (resources/pdf/*.pdf), pinned
+vendor docs (resources/modal-docs/**/*.md), and our own writing
+(human-owned-spec/*.md, notes/**/*.md, proposals/**/*.md, root *.md). Three
+indexes, not one: papers and docs (text we did not write) and workspace
 (everything we wrote). A search of one can never bury -- or leak into -- the
-other.
+others.
 
 Off-the-shelf engine: txtai (dense sentence embeddings + a faiss index). We
 build nothing search-related ourselves; we only feed our own sources in and
@@ -17,7 +18,11 @@ search has a recall hole exactly there.
 
 An EMPTY corpus is a lawful state: it publishes a sentinel version (txtai
 cannot save a zero-document index) and searches on it answer with zero
-hits -- the papers corpus is legitimately empty at repo birth.
+hits -- the papers and docs corpora are legitimately empty at repo birth.
+
+Pinned sources carry a date + TTL in the freshness ledger (freshness.py);
+a stale or absent pin attaches a warning to every reply from its corpus,
+so consulting rotten ground and seeing the rot are the same event.
 
 Usage:
     python search.py "warmth thermostat reconciler"
@@ -44,6 +49,8 @@ from pathlib import Path
 import fitz  # PyMuPDF
 from txtai import Embeddings
 
+import freshness  # sibling module; scripts in resources/ run with it on sys.path
+
 # Some arXiv PDFs have unparseable color spaces; PyMuPDF's C error handler can
 # crash on Windows when its stdout callback fires mid-extract (OSError 22). Mute
 # the display so a cosmetic warning can't kill a rebuild -- bad pages are skipped
@@ -61,6 +68,7 @@ for _stream in (sys.stdout, sys.stderr):
         pass  # already-wrapped or non-reconfigurable stream; printing stays best-effort
 
 PDF_DIR = Path(__file__).parent / "pdf"
+DOCS_DIR = Path(__file__).parent / "modal-docs"   # pinned vendor docs mirror (fetch_modal_docs.py)
 REPO = Path(__file__).parent.parent                # repo root
 SPEC_DIR = REPO / "human-owned-spec"               # the human-owned spec (design truth)
 NOTES_DIR = REPO / "notes"                         # design notes (empty until they land; wired now)
@@ -96,6 +104,16 @@ def paper_chunks():
                     continue
                 for ci, text in _window(words):
                     yield f"{key}#p{pno}#c{ci}", text
+
+
+def docs_chunks():
+    """Yield (id, text) for the pinned vendor docs -> "<path-slug>#modal#c<chunk>"
+    (e.g. 'guide-scale#modal#c2'). The docs corpus: vendor ground pulled on demand,
+    indexed on its own so it never buries our writing or the literature."""
+    for md in sorted(DOCS_DIR.glob("**/*.md")):
+        slug = md.relative_to(DOCS_DIR).with_suffix("").as_posix().replace("/", "-")
+        for ci, text in _window(md.read_text(encoding="utf-8", errors="replace").split()):
+            yield f"{slug}#modal#c{ci}", text
 
 
 def workspace_chunks():
@@ -154,8 +172,9 @@ class Corpus:
 
 
 PAPERS = Corpus("papers", paper_chunks)
+DOCS = Corpus("docs", docs_chunks)
 WORKSPACE = Corpus("workspace", workspace_chunks)
-CORPORA = {c.name: c for c in (PAPERS, WORKSPACE)}
+CORPORA = {c.name: c for c in (PAPERS, DOCS, WORKSPACE)}
 
 
 def _read_current(corpus: Corpus) -> Path | None:
@@ -406,6 +425,9 @@ def serve(rebuild: bool) -> int:
             hits = [{"id": h["id"], "score": h.get("score"), "text": h["text"]}
                     for h in semantic(emb, req["query"], int(req.get("k", 6)))]
             out = {"hits": hits}
+            warn = freshness.warnings_for(corpus.name)
+            if warn:
+                out["warnings"] = warn
         except Exception as exc:  # bad line or search error: report it, keep serving
             out = {"error": f"{type(exc).__name__}: {exc}"}
         print(json.dumps(out, ensure_ascii=False), flush=True)
@@ -452,7 +474,10 @@ def main(argv=None) -> int:
 
     embs = {c.name: load_or_build(c, args.rebuild, args.update) for c in CORPORA.values()}
 
-    # Batch: pay the model + index loads once, then run every query against both corpora.
+    # Batch: pay the model + index loads once, then run every query against all corpora.
+    for name in CORPORA:
+        for w in freshness.warnings_for(name):
+            print(f"!! {w}", file=sys.stderr)
     for i, query in enumerate(args.query):
         if len(args.query) > 1:
             print(f"\n##################### [{i + 1}/{len(args.query)}] {query}")

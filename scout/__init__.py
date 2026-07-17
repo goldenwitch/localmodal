@@ -3,6 +3,8 @@
 Tools:
   workspace_search  txtai index over our own writing (spec, notes, proposals)
   papers_search     txtai index over the third-party papers (resources/pdf/)
+  docs_search       txtai index over pinned vendor docs (resources/modal-docs/),
+                    freshness-stamped (date + TTL; stale pins scream in-results)
   web_search        Gemini + Google Search grounding; sanitized, delimited,
                     citations from grounding metadata
 

@@ -59,6 +59,39 @@ def test_dpapi() -> bool:
     return ok
 
 
+def test_freshness() -> bool:
+    print("freshness ledger:")
+    import importlib.util as iu
+    from datetime import date
+    from pathlib import Path
+    spec = iu.spec_from_file_location(
+        "freshness", Path(__file__).resolve().parents[1] / "resources" / "freshness.py")
+    fresh = iu.module_from_spec(spec)
+    spec.loader.exec_module(fresh)
+    today = date(2026, 7, 17)
+    entries = {
+        "young": {"corpus": "docs", "fetched": "2026-07-10", "ttl_days": 30,
+                   "artifact": ".", "refresh": "refetch-young"},
+        "old": {"corpus": "docs", "fetched": "2026-06-01", "ttl_days": 30,
+                 "artifact": ".", "refresh": "refetch-old"},
+        "immutable": {"corpus": "papers", "fetched": "2020-01-01", "ttl_days": None,
+                       "artifact": ".", "refresh": "refetch-imm"},
+        "gone": {"corpus": "papers", "fetched": "2026-07-17", "ttl_days": None,
+                  "artifact": "no-such-dir-xyz", "refresh": "refetch-gone"},
+    }
+    docs_w = fresh.warnings_for("docs", entries, today)
+    papers_w = fresh.warnings_for("papers", entries, today)
+    ok = _check("within TTL is silent", not any("young" in w for w in docs_w))
+    ok &= _check("past TTL screams with fix",
+                 any("STALE source 'old'" in w and "refetch-old" in w and "16d overdue" in w
+                     for w in docs_w))
+    ok &= _check("immutable never screams", not any("immutable" in w for w in papers_w))
+    ok &= _check("absent artifact screams with fix",
+                 any("ABSENT source 'gone'" in w and "refetch-gone" in w for w in papers_w))
+    ok &= _check("corpora isolated", not any("gone" in w for w in docs_w))
+    return ok
+
+
 def test_corpus() -> bool:
     print("workspace_search + papers_search:")
     from . import server
@@ -68,10 +101,14 @@ def test_corpus() -> bool:
     longest = max((len(l) for l in ws.splitlines()), default=0)
     ok &= _check("previews capped (not full chunks)", longest <= 500, f"longest={longest}")
     # The papers corpus is empty until the first web_search lead is fetched;
-    # "no hits" is that state's honest answer, a failure string is not.
+    # "no hits" is that state's honest answer, a failure string is not. Same
+    # contract for the docs corpus before its first pin.
     pp = server.papers_search("joint embedding predictive architecture", k=3)
     ok &= _check("papers answers without failing", "failed" not in pp,
                  pp[:80].replace("\n", " "))
+    dd = server.docs_search("container autoscaler min_containers warm", k=3)
+    ok &= _check("docs answers without failing", "failed" not in dd,
+                 dd[:80].replace("\n", " "))
     second = server.workspace_search("telemetry duty cycle gap CDF", k=2)  # warm path: no reload
     ok &= _check("second query on warm worker", "UNTRUSTED" in second)
     server._shutdown()  # free the worker's RAM before test_mcp spawns its own
@@ -109,7 +146,8 @@ def test_mcp() -> bool:
                 await sess.initialize()
                 names = [t.name for t in (await sess.list_tools()).tools]
                 ok = _check("tools listed",
-                            sorted(names) == ["papers_search", "web_search", "workspace_search"],
+                            sorted(names) == ["docs_search", "papers_search",
+                                              "web_search", "workspace_search"],
                             ", ".join(names))
                 res = await sess.call_tool("workspace_search",
                                            {"query": "singleton container continuous batching", "k": 2})
@@ -122,7 +160,7 @@ def test_mcp() -> bool:
 
 
 def main() -> int:
-    results = [test_sanitize(), test_dpapi(), test_corpus()]
+    results = [test_sanitize(), test_dpapi(), test_freshness(), test_corpus()]
     if "--mcp" in sys.argv:
         results.append(test_mcp())
     if "--web" in sys.argv:

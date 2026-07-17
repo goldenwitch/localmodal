@@ -10,6 +10,9 @@ Tools:
                             notes, proposals); hits self-cite the file.
   papers_search(query, k)   semantic hits from the third-party papers
                             (resources/pdf/*.pdf), self-citing paper#page#chunk.
+  docs_search(query, k)     semantic hits from the pinned vendor docs
+                            (resources/modal-docs/), freshness-stamped:
+                            a stale pin screams at the top of its results.
   web_search(question)      Gemini + Google Search grounding. Answer text is
                             sanitized (scout.sanitize) and wrapped UNTRUSTED;
                             the source list comes from the API's grounding
@@ -66,9 +69,10 @@ app = FastMCP(
     # unconfined one). Routing detail lives on each tool's own description.
     instructions=(
         "Local search over this repo's own writing (workspace_search), the "
-        "indexed third-party literature (papers_search), and live-web "
-        "primary-source leads (web_search). Trust a web lead once its handle "
-        "resolves — the fetch is the verification."
+        "indexed third-party literature (papers_search), pinned vendor docs "
+        "(docs_search), and live-web primary-source leads (web_search). "
+        "Trust a web lead once its handle resolves — the fetch is the "
+        "verification."
     ),
 )
 
@@ -153,9 +157,13 @@ def _search(source: str, label: str, query: str, k: int) -> str:
         return f"{label} failed: bad worker output: {exc}"
     if "error" in reply:
         return f"{label} failed: {reply['error']}"
+    # Freshness screams ride ahead of the results, outside the UNTRUSTED wrap:
+    # they are this instrument's own voice, and consulting a rotten pin should
+    # look different from consulting ground.
+    banner = "".join(f"!! {w}\n" for w in reply.get("warnings", []))
     hits = reply.get("hits", [])
     if not hits:
-        return f"no hits in {source}"
+        return banner + f"no hits in {source}"
     lines = []
     for h in hits:
         snippet = " ".join(h["text"].split())
@@ -165,7 +173,7 @@ def _search(source: str, label: str, query: str, k: int) -> str:
         tag = f"{score:.3f}" if isinstance(score, float) else "  -  "
         lines.append(f"[{tag}] {h['id']}\n  {snippet}")
     # Third-party text either way (papers, or our own .md) -- same hygiene, same labeling.
-    return sanitize.wrap(label.upper(), sanitize.clean("\n".join(lines), max_chars=12000))
+    return banner + sanitize.wrap(label.upper(), sanitize.clean("\n".join(lines), max_chars=12000))
 
 
 def workspace_search(query: str, k: int = 6) -> str:
@@ -184,6 +192,17 @@ def papers_search(query: str, k: int = 6) -> str:
     page before building on it. The first call after server start may wait on
     a one-time index load; later calls are sub-second."""
     return _search("papers", "papers_search", query, k)
+
+
+def docs_search(query: str, k: int = 6) -> str:
+    """Semantic search over locally pinned vendor documentation (Modal's docs,
+    mirrored from modal.com/llms.txt). Hits self-cite as path#modal#chunk
+    (e.g. 'guide-scale#modal#c2'); the mirrored page under
+    resources/modal-docs/ holds the full text. Pins carry a date + TTL: a
+    stale or missing pin announces itself at the top of results together
+    with its refresh command. The first call after server start may wait on
+    a one-time index load; later calls are sub-second."""
+    return _search("docs", "docs_search", query, k)
 
 
 def web_search(question: str) -> str:
@@ -254,6 +273,7 @@ def web_search(question: str) -> str:
 
 app.tool()(workspace_search)
 app.tool()(papers_search)
+app.tool()(docs_search)
 app.tool()(web_search)
 
 

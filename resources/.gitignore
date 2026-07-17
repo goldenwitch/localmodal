@@ -1,5 +1,8 @@
 # Downloaded paper PDFs are reproducible via fetch_papers.py; don't commit them.
 pdf/
 
+# The pinned Modal docs mirror is reproducible via fetch_modal_docs.py.
+modal-docs/
+
 # Semantic search index is rebuildable from the sources via search.py.
 .index/

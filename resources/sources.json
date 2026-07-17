@@ -1,0 +1,11 @@
+{
+  "modal-docs": {
+    "artifact": "modal-docs",
+    "corpus": "docs",
+    "fetched": "2026-07-17",
+    "files": 283,
+    "origin": "https://modal.com/llms.txt",
+    "refresh": "python resources/fetch_modal_docs.py, then python resources/search.py --update",
+    "ttl_days": 30
+  }
+}
