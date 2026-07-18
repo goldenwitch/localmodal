@@ -7,5 +7,14 @@
     "origin": "https://modal.com/llms.txt",
     "refresh": "python resources/fetch_modal_docs.py, then python resources/search.py --update",
     "ttl_days": 30
+  },
+  "vscode-docs": {
+    "artifact": "vscode-docs",
+    "corpus": "docs",
+    "fetched": "2026-07-17",
+    "files": 2,
+    "origin": "https://github.com/microsoft/vscode-docs/tree/main/docs/agent-customization",
+    "refresh": "python resources/fetch_vscode_docs.py, then python resources/search.py --update",
+    "ttl_days": 30
   }
 }

@@ -109,6 +109,9 @@ def test_corpus() -> bool:
     dd = server.docs_search("container autoscaler min_containers warm", k=3)
     ok &= _check("docs answers without failing", "failed" not in dd,
                  dd[:80].replace("\n", " "))
+    vscode = server.docs_search("VS Code Custom Endpoint MCP tools in chat", k=5)
+    ok &= _check("VS Code docs are indexed", "#vscode#" in vscode,
+                 vscode[:80].replace("\n", " "))
     second = server.workspace_search("telemetry duty cycle gap CDF", k=2)  # warm path: no reload
     ok &= _check("second query on warm worker", "UNTRUSTED" in second)
     server._shutdown()  # free the worker's RAM before test_mcp spawns its own

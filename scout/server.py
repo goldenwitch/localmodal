@@ -11,7 +11,7 @@ Tools:
   papers_search(query, k)   semantic hits from the third-party papers
                             (resources/pdf/*.pdf), self-citing paper#page#chunk.
   docs_search(query, k)     semantic hits from the pinned vendor docs
-                            (resources/modal-docs/), freshness-stamped:
+                            (Modal and VS Code), freshness-stamped:
                             a stale pin screams at the top of its results.
   web_search(question)      Gemini + Google Search grounding. Answer text is
                             sanitized (scout.sanitize) and wrapped UNTRUSTED;
@@ -195,10 +195,10 @@ def papers_search(query: str, k: int = 6) -> str:
 
 
 def docs_search(query: str, k: int = 6) -> str:
-    """Semantic search over locally pinned vendor documentation (Modal's docs,
-    mirrored from modal.com/llms.txt). Hits self-cite as path#modal#chunk
-    (e.g. 'guide-scale#modal#c2'); the mirrored page under
-    resources/modal-docs/ holds the full text. Pins carry a date + TTL: a
+    """Semantic search over locally pinned Modal and VS Code documentation.
+    Hits self-cite as path#vendor#chunk (for example,
+    'guide-scale#modal#c2' or 'language-models#vscode#c3'); the matching
+    mirror under resources/ holds the full text. Pins carry a date + TTL: a
     stale or missing pin announces itself at the top of results together
     with its refresh command. The first call after server start may wait on
     a one-time index load; later calls are sub-second."""

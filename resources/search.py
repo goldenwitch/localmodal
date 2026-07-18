@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Semantic search over the local corpus: papers (resources/pdf/*.pdf), pinned
-vendor docs (resources/modal-docs/**/*.md), and our own writing
-(human-owned-spec/*.md, notes/**/*.md, proposals/**/*.md, root *.md). Three
+vendor docs (resources/modal-docs/**/*.md and resources/vscode-docs/**/*.md),
+and our own writing (human-owned-spec/*.md, notes/**/*.md,
+proposals/**/*.md, root *.md). Three
 indexes, not one: papers and docs (text we did not write) and workspace
 (everything we wrote). A search of one can never bury -- or leak into -- the
 others.
@@ -68,7 +69,10 @@ for _stream in (sys.stdout, sys.stderr):
         pass  # already-wrapped or non-reconfigurable stream; printing stays best-effort
 
 PDF_DIR = Path(__file__).parent / "pdf"
-DOCS_DIR = Path(__file__).parent / "modal-docs"   # pinned vendor docs mirror (fetch_modal_docs.py)
+DOCS_SOURCES = (
+    ("modal", Path(__file__).parent / "modal-docs"),
+    ("vscode", Path(__file__).parent / "vscode-docs"),
+)
 REPO = Path(__file__).parent.parent                # repo root
 SPEC_DIR = REPO / "human-owned-spec"               # the human-owned spec (design truth)
 NOTES_DIR = REPO / "notes"                         # design notes (empty until they land; wired now)
@@ -107,13 +111,16 @@ def paper_chunks():
 
 
 def docs_chunks():
-    """Yield (id, text) for the pinned vendor docs -> "<path-slug>#modal#c<chunk>"
-    (e.g. 'guide-scale#modal#c2'). The docs corpus: vendor ground pulled on demand,
-    indexed on its own so it never buries our writing or the literature."""
-    for md in sorted(DOCS_DIR.glob("**/*.md")):
-        slug = md.relative_to(DOCS_DIR).with_suffix("").as_posix().replace("/", "-")
-        for ci, text in _window(md.read_text(encoding="utf-8", errors="replace").split()):
-            yield f"{slug}#modal#c{ci}", text
+    """Yield (id, text) for pinned vendor docs as
+    "<path-slug>#<vendor>#c<chunk>" (for example, 'guide-scale#modal#c2' or
+    'language-models#vscode#c3'). Vendor-qualified ids prevent equal paths in
+    separate mirrors from colliding."""
+    for vendor, docs_dir in DOCS_SOURCES:
+        for md in sorted(docs_dir.glob("**/*.md")):
+            slug = md.relative_to(docs_dir).with_suffix("").as_posix().replace("/", "-")
+            words = md.read_text(encoding="utf-8", errors="replace").split()
+            for ci, text in _window(words):
+                yield f"{slug}#{vendor}#c{ci}", text
 
 
 def workspace_chunks():

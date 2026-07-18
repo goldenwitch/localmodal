@@ -6,7 +6,7 @@ Exposes the repo's search surfaces as agent tools over stdio MCP:
 |---|---|---|
 | `workspace_search` | local txtai index ([resources/search.py](../resources/search.py)) over **our own writing**: the human-owned spec, notes, proposals | our results; prefer it first, hits self-cite, read the file before building on it |
 | `papers_search` | local txtai index over the **third-party papers** (`resources/pdf/`) | the literature; hits self-cite as `paper#page#chunk` |
-| `docs_search` | local txtai index over the **pinned vendor docs** (`resources/modal-docs/`, mirrored from [modal.com/llms.txt](https://modal.com/llms.txt)) | pinned ground with a date + TTL; a stale or absent pin screams at the top of its results |
+| `docs_search` | local txtai index over the **pinned vendor docs**: Modal (`resources/modal-docs/`) and VS Code (`resources/vscode-docs/`) | pinned ground with a date + TTL; hits self-cite as `path#vendor#chunk`; a stale or absent pin screams at the top of its results |
 | `web_search` | Gemini + Google Search grounding | **untrusted leads** — sanitized, delimited, citations from grounding metadata |
 
 Registered in [.vscode/mcp.json](../.vscode/mcp.json); VS Code starts it on demand.

@@ -4,5 +4,8 @@ pdf/
 # The pinned Modal docs mirror is reproducible via fetch_modal_docs.py.
 modal-docs/
 
+# The pinned VS Code docs mirror is reproducible via fetch_vscode_docs.py.
+vscode-docs/
+
 # Semantic search index is rebuildable from the sources via search.py.
 .index/
