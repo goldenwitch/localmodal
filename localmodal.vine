@@ -1,0 +1,179 @@
+vine 1.2.0
+prefix: lm
+title: Modal Qwen trial in VS Code Chat
+---
+[lm] Decide whether Modal-hosted Qwen merits continuation (planning)
+The destination is an owner decision grounded in direct use, not a production platform.
+Complete when the owner has enough observed use to decide whether this stops here or informs later Coven work.
+-> lm/trial
+> Scope ends at an owner usage decision in VS Code; generic agent infrastructure, evaluation platforms, and Coven integration are later owner decisions.
+> Human-owned specification remains design authority. This VINE owns execution order, open gaps, and dated evidence.
+@guidance text/markdown human-owned-spec/initial-spec.md
+---
+[lm/trial] Run the owner usage trial (notstarted)
+Use the configured model in ordinary VS Code work and retain observations under the owner-defined trial contract.
+Accept: the planned usage sample is complete and its observations are available for the owner decision.
+-> lm/design/trial
+-> lm/requires/chat
+-> lm/requires/operable
+-> lm/requires/tools
+---
+[lm/design/trial] Design with user: usage trial (planning)
+Define the tasks, duration, observations, comparison baseline, and stopping condition that make the usage trial informative.
+Accept: the owner says the trial contract is sufficient to answer the destination question.
+---
+[lm/requires/chat] Requires: selectable streamed chat (notstarted)
+What would satisfy the trial: the selected Qwen model appears in VS Code's model picker and completes an ordinary streamed chat response.
+This node owns the requirement only; implementation choices live below verification.
+-> lm/verify/chat
+---
+[lm/requires/tools] Requires: MCP tool round-trip (notstarted)
+What would satisfy the trial: in agent mode, Qwen requests an existing MCP tool, VS Code invokes it, and Qwen uses the returned result.
+This node owns the requirement only; implementation choices live below verification.
+-> lm/verify/tools
+> VS Code owns MCP discovery and tool invocation. The provider owns only the selected model API's tool-call and tool-result protocol.
+---
+[lm/requires/operable] Requires: bounded and controlled Modal trial (notstarted)
+What would satisfy the trial: deployment is repeatable, ingress is controlled, spend can be stopped, and measured limits are recorded without overstatement.
+This node owns the requirement only; implementation choices live below verification.
+-> lm/verify/operable
+---
+[lm/verify/chat] Verify selectable streamed chat (notstarted)
+Exercise the selected Custom Endpoint API from VS Code with a normal prompt.
+Accept: model selection succeeds and the response streams to completion without protocol repair outside the selected stack.
+-> lm/implement/vscode
+---
+[lm/verify/tools] Verify MCP tool round-trip (notstarted)
+Exercise agent mode with a prompt that requires Scout's docs_search tool.
+Accept: the endpoint emits a valid streamed tool call, VS Code invokes docs_search, the endpoint accepts the tool result, and the final answer uses it.
+-> lm/implement/vscode
+---
+[lm/verify/operable] Verify trial operations and boundary (notstarted)
+Exercise deploy, authenticated and rejected requests, warm invocation, and deliberate shutdown.
+Accept: commands and observations reproduce the boundary, measured context/concurrency, startup behavior, and spend controls.
+-> lm/implement/edge
+-> lm/implement/operations
+---
+[lm/implement/vscode] Implement VS Code provider configuration (notstarted)
+Configure the selected Custom Endpoint API, URL, credential carriage, model id, tool capability, streaming, and measured token limits.
+Accept: configuration contains no guessed limits or credentials in tracked repository files.
+-> lm/implement/edge
+-> lm/implement/operations
+---
+[lm/implement/edge] Implement controlled ingress (notstarted)
+Implement the owner-selected edge control so only intended API routes are reachable and authenticated from VS Code.
+Accept: accepted and rejected request probes demonstrate the selected boundary; no unselected engine control or inference route is Internet-reachable.
+-> lm/design/auth
+-> lm/implement/cornerstone
+---
+[lm/implement/operations] Implement repeatable trial operations (notstarted)
+Implement model/cache persistence, deploy, warm-state controls, observability needed by acceptance, and explicit shutdown.
+Accept: another run can reproduce deployment and teardown from repository commands without unstated state.
+-> lm/design/runtime
+-> lm/implement/cornerstone
+---
+[lm/implement/cornerstone] Lay the cornerstone (notstarted)
+Instantiate only the selected bakeoff winner: pinned engine and model artifact, chosen API surface, chosen Modal GPU cell, and one direct streaming smoke request.
+This is the first product implementation; bakeoff probes remain experimental and are not promoted wholesale.
+Accept: the selected checkpoint loads and one direct request streams on the chosen Modal cell.
+-> lm/design/stack
+> No product cornerstone is laid until the bakeoff observations are reviewed and the owner selects one stack.
+---
+[lm/design/auth] Design with user: public-edge authentication (planning)
+Choose credential storage, VS Code carriage, route allowlisting, and the component that authenticates before exposing the endpoint.
+The design must account for the selected engine's complete route surface and Modal's available edge controls.
+Accept: the owner selects one testable boundary with no implicit public routes.
+-> lm/research/auth
+---
+[lm/research/auth] Resolve authentication capabilities (notstarted)
+Measure VS Code Custom Endpoint credential/header behavior and enumerate Modal or reverse-proxy shapes that can expose only the selected API routes.
+Known 2026-07-17: Modal proxy auth uses Modal-Key plus Modal-Secret; vLLM --api-key protects selected API prefixes but not its whole HTTP surface. These are candidate observations, not a selected design.
+Report: exact configuration surfaces, secret locations, reachable routes, and request probes; no preferred design verdict.
+-> lm/research/engines
+-> lm/research/vscode-contract
+@guidance text/html https://modal.com/docs/guide/webhook-proxy-auth
+@guidance text/html https://modal.com/docs/sdk/py/latest/modal.web_server
+---
+[lm/design/runtime] Design with user: runtime and cost policy (planning)
+Choose GPU count, served context, concurrency, warm-state policy, cache persistence, and spend controls from measured bakeoff and Modal data.
+Accept: every promised limit is measured and every always-on cost has an explicit owner control.
+-> lm/bakeoff/report
+-> lm/research/modal-runtime
+---
+[lm/research/modal-runtime] Resolve Modal runtime controls (notstarted)
+Collect current first-party behavior and pricing for candidate GPUs, Volumes, web serving, concurrency, autoscaling, deployment, and shutdown.
+Known 2026-07-17: Modal lists gpu=RTX-PRO-6000; NVIDIA specifies 96 GB GDDR7; Modal listed $0.000842/s. Values must be refreshed when the cell is admitted.
+Report: dated handles and numeric inputs needed by runtime design; no preferred policy verdict.
+@guidance text/html https://modal.com/docs/guide/gpu
+@guidance text/html https://modal.com/pricing
+@guidance text/html https://modal.com/docs/guide/volumes
+@guidance text/html https://modal.com/docs/guide/scale
+@guidance text/html https://modal.com/docs/guide/secrets
+@guidance text/html https://www.nvidia.com/en-us/data-center/rtx-pro-6000-blackwell-server-edition/
+---
+[lm/design/stack] Design with user: select the trial stack (planning)
+Review bakeoff data and select one exact engine revision, model artifact revision, API type, tool parser path, GPU cell, and initial context target.
+Accept: the owner selects one stack; unselected implementations do not enter product code.
+-> lm/bakeoff/report
+---
+[lm/bakeoff/report] Publish bakeoff observations (notstarted)
+Publish raw and summarized observations for every admitted cell under the ruled protocol.
+Report data: load success, versions, conditions, VRAM, context/concurrency, TTFT, prefill/decode rates, tool-call traces, startup time, and estimated Modal cost.
+Accept: failed and successful cells are both represented and rerun commands are attached.
+-> lm/bakeoff/run
+---
+[lm/bakeoff/run] Run the engine and deployment bakeoff (notstarted)
+Run every admitted cell with the same ruled workload and repetition scheme.
+Accept: each result is attributable to exact engine, artifact, GPU, API, and configuration revisions.
+-> lm/implement/bakeoff
+---
+[lm/implement/bakeoff] Implement the bakeoff harness (notstarted)
+Build disposable probes and capture for model load, memory, protocol streaming, MCP tool round-trip, latency, throughput, startup, and teardown.
+Keep experimental engine integrations isolated from product implementation.
+Accept: one command per admitted cell produces the ruled observation schema and preserves raw output.
+-> lm/design/bakeoff
+---
+[lm/design/bakeoff] Design with user: bakeoff contract (planning)
+Define admitted candidates, workloads, measures, repetitions, failure recording, resource budget, and stopping condition.
+The owner leads the evaluation shape; the agent drafts the executable contract.
+Accept: the owner confirms the contract can distinguish a stack suitable for the destination.
+-> lm/design/api-surface
+-> lm/design/model-cells
+-> lm/research/engines
+> No serving engine has prior status. Admit vLLM, SGLang, TensorRT-LLM, or another challenger only when the research gates show the exact model and required VS Code surface are supportable.
+---
+[lm/design/model-cells] Design with user: model and compute cells (planning)
+Choose which exact BF16, official FP8, and candidate 4-bit revisions and which one- or multi-GPU Modal cells enter the bakeoff.
+Accept: each admitted cell has a falsifiable load hypothesis, bounded cost, and pinned artifact handle.
+-> lm/research/model-footprint
+> The base model identity is fixed by the owner as Qwen/Qwen3-Next-80B-A3B-Instruct. Quantized artifact revisions, GPU count, and GPU type remain bakeoff cells.
+---
+[lm/research/model-footprint] Resolve model footprint and artifact candidates (notstarted)
+Measure repository bytes and dtype counts, calculate memory floors, resolve exact revisions, and identify first-party versus community quantizations.
+Known 2026-07-17: official FP8 revision c5f5f263bdd5cc134092897864e8905d8fe7b928 has 82,051,854,384 safetensor bytes (76.417 GiB): 80,636,542,976 FP8, 688,319,744 BF16, and 4,921,664 F32 parameters. This is a storage floor, not measured runtime VRAM. Qwen publishes BF16 and FP8; a one-GPU 4-bit artifact is unresolved.
+Report: checkpoint bytes, runtime-memory unknowns, documented engine/GPU requirements, and candidate handles; do not infer fit from active parameter count.
+@guidance text/html https://huggingface.co/Qwen/Qwen3-Next-80B-A3B-Instruct
+@guidance text/html https://huggingface.co/Qwen/Qwen3-Next-80B-A3B-Instruct-FP8
+---
+[lm/design/api-surface] Design with user: VS Code API surface (planning)
+Choose which VS Code Custom Endpoint API types enter the bakeoff: Chat Completions, Responses, and/or Messages.
+Accept: each admitted surface has an end-to-end streaming and tool-result round-trip witness.
+-> lm/research/vscode-contract
+---
+[lm/research/vscode-contract] Resolve VS Code provider contract (notstarted)
+Extract the current Custom Endpoint request, streaming, tool-calling, credential, token-limit, and agent-mode requirements from pinned first-party docs and focused probes.
+Known 2026-07-17: VS Code Custom Endpoint offers Chat Completions, Responses, and Messages API types; agent mode requires tool calling; VS Code discovers and invokes MCP tools.
+Report: exact fields and observed wire behavior for each candidate API type.
+@guidance text/html https://code.visualstudio.com/docs/agent-customization/language-models
+@guidance text/html https://code.visualstudio.com/docs/agent-customization/mcp-servers
+---
+[lm/research/engines] Resolve admissible serving engines (notstarted)
+Build a first-party support matrix for the exact Qwen3-Next architecture and artifact candidates across vLLM, SGLang, TensorRT-LLM, and any challenger that passes all gates.
+Known 2026-07-17: vLLM's Qwen3-Next recipe uses TP4, prefix caching, and Hermes tool parsing; Qwen's official SGLang command also uses TP4. Neither is a selection or proof that one 96 GB GPU cannot work.
+Gates: load support, selected quantization/GPU support, VS Code-compatible API, streamed automatic tool calls, tool-result continuation, and measurable runtime statistics.
+Report exclusions with evidence; do not carry unsupported engines into the bakeoff.
+@guidance text/html https://docs.vllm.ai/projects/recipes/en/latest/Qwen/Qwen3-Next.html
+@guidance text/html https://docs.vllm.ai/en/stable/serving/online_serving/
+@guidance text/html https://docs.vllm.ai/en/stable/features/tool_calling/
+@guidance text/html https://docs.vllm.ai/en/stable/usage/security/#api-key-authentication-limitations
+@guidance text/html https://docs.vllm.ai/en/stable/features/automatic_prefix_caching/
