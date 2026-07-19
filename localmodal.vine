@@ -91,6 +91,7 @@ Known 2026-07-17: Modal proxy auth uses Modal-Key plus Modal-Secret; vLLM --api-
 Report: exact configuration surfaces, secret locations, reachable routes, and request probes; no preferred design verdict.
 -> lm/research/engines
 -> lm/research/vscode-contract
+-> ssm
 @guidance text/html https://modal.com/docs/guide/webhook-proxy-auth
 @guidance text/html https://modal.com/docs/sdk/py/latest/modal.web_server
 ---
@@ -100,10 +101,19 @@ Accept: every promised limit is measured and every always-on cost has an explici
 -> lm/bakeoff/report
 -> lm/research/modal-runtime
 ---
-[lm/research/modal-runtime] Resolve Modal runtime controls (notstarted)
+[lm/research/modal-runtime] Resolve Modal runtime controls (reviewing)
 Collect current first-party behavior and pricing for candidate GPUs, Volumes, web serving, concurrency, autoscaling, deployment, and shutdown.
 Known 2026-07-17: Modal lists gpu=RTX-PRO-6000; NVIDIA specifies 96 GB GDDR7; Modal listed $0.000842/s. Values must be refreshed when the cell is admitted.
+Known 2026-07-19 (GPU multi-count gap): Modal's GPU guide sentence enumerating multi-GPU counts ("B300, B200, H200, H100, A100, L4, T4, L40S support up to 8 GPUs... A10 supports up to 4 GPUs") does NOT name RTX-PRO-6000 at all, in both the live page and local mirror. NVIDIA's own RTX PRO 6000 Blackwell Server Edition product page (specs table) also states no multi-GPU-per-node or NVLink/NVSwitch figure -- only single-GPU specs (96 GB GDDR7, 512-bit bus, 1597 GB/s bandwidth) plus Multi-Instance GPU (MIG, up to 4 isolated instances WITHIN one GPU, not multi-GPU scaling). No source documents a multi-GPU count for RTX-PRO-6000 as of 2026-07-19; must be confirmed via a Modal trial or Modal support.
+Known 2026-07-19 (autoscaling/shutdown, Functions): scaledown_window default 60s idle timeout before shutdown; startup_timeout default 30s before a non-ready container is terminated as failed; configurable per @app.function/@app.cls via max_containers, min_containers, buffer_containers, scaledown_window; dynamic runtime overrides via Function.update_autoscaler() (reset on next deploy).
+Known 2026-07-19 (Servers primitive, @app.server(), distinct from Functions/web_server): target_concurrency drives autoscaling (soft limit only); scaleup_window/scaledown_window tune responsiveness; startup_timeout applies to port-listening readiness; periodic health checks -- too many consecutive failures terminates+replaces the container; on scale-down, inflight requests get up to exit_grace_period seconds, then SIGTERM, then 30s grace, then SIGKILL; requires Modal-Key/Modal-Secret proxy-auth headers unless unauthenticated=True is set; routing_region (us-east default, us-west, eu-west, ap-south) plus optional compute_region (cost multiplier); Modal-Session-ID header enables sticky sessions; zero warm containers returns 503 immediately (no request queueing, unlike Functions); Servers lack built-in retries and configurable timeouts -- client/app layer must implement.
+Known 2026-07-19 (deployment lifecycle): a rollover appears as a new version in deployment history and can use rolling or recreate strategy; rollbacks are available.
+Known 2026-07-19 (Volumes): distributed, write-once-read-many-optimized filesystem; up to 2.5 GB/s bandwidth (not guaranteed); billed via daily snapshot of total storage, deleted data may still bill up to 4 days; mount options read_only and sub_path apply per-container-mount (not stored on the Volume); modal.Volume.from_name + vol.commit() needed to persist writes.
+Known 2026-07-19 (Secrets): key names <=16,384 chars, values <=32,768 chars per key-value pair; injected via secrets=[...] on @app.function/@app.cls; multiple Secrets merge in list order, later entries override earlier on key clash; creatable via dashboard, CLI, or Secret.from_dict() in code.
+Known 2026-07-19 (Web Function proxy auth, distinct from Server auth): requires_proxy_auth=True on fastapi_endpoint/asgi_app/wsgi_app/web_server gates public access behind Modal-Key/Modal-Secret headers; under RBAC, tokens can be scoped to specific Environments.
+Known 2026-07-18 (Endpoints primitive, aka "Modal Inference endpoints"): a managed LLM-serving primitive distinct from Functions/web_server and from raw Server, created via `modal endpoint create --model <hf-repo-id>` (modal.com/docs/guide/endpoints, modal.com/docs/cli/latest/endpoint). Built on top of the Server primitive (dashboard's "Source" panel shows Server-based generated code). Catalog families: Qwen, Kimi, Gemma4, DeepSeek, Nemotron, GPT-OSS, GLM; also accepts custom weights from a private HF repo (--custom-hf-repo/--custom-hf-revision/--custom-hf-token) or a Modal Volume (--custom-volume-name/--custom-volume-path, directory must contain config.json), always against a catalog base model for recipe selection. Serves ONLY the OpenAI Chat Completions API under /v1 (GET /v1/models to list) -- no /v1/responses or /v1/messages route is documented in the guide or the CLI reference. Auth: proxy tokens (Modal-Key/Modal-Secret headers) by default, --unauthenticated opts out, RBAC workspaces need `modal workspace proxy-tokens allow`. Placement: --routing-region (us-west default/us-east/eu-west/ap-south) and --colocate-compute (pin compute to routing region, incurs region multiplier). Lifecycle: `modal endpoint list`, `modal endpoint stop` (tears down containers, stops billing). Pricing: standard compute rates, scale-to-zero by default, no idle cost, autoscaling overrides adjustable in UI. Data retention (modal.com/docs/guide/security): Modal Inference endpoints are zero data retention -- request/response payloads are never written to disk, pass through only as in-flight network traffic, TLS terminates at Modal's edge proxy and tunnels directly to the container; Modal's own retention table lists Server and Auto Endpoints payloads as "Not stored -- proxied directly to your container", versus Functions' 7-day TTL on inputs/outputs.
 Report: dated handles and numeric inputs needed by runtime design; no preferred policy verdict.
+-> ssm
 @guidance text/html https://modal.com/docs/guide/gpu
 @guidance text/html https://modal.com/pricing
 @guidance text/html https://modal.com/docs/guide/volumes
@@ -115,6 +125,7 @@ Report: dated handles and numeric inputs needed by runtime design; no preferred 
 Review bakeoff data and select one exact engine revision, model artifact revision, API type, tool parser path, GPU cell, and initial context target.
 Accept: the owner selects one stack; unselected implementations do not enter product code.
 -> lm/bakeoff/report
+> Owner decision 2026-07-18: because the targeted surface is Messages (Anthropic-compatible), Modal's managed Endpoints primitive is ruled out as the serving mechanism for this trial -- it confirmed-serves only the OpenAI Chat Completions API at /v1 (modal.com/docs/guide/endpoints, fetched 2026-07-18), with no /v1/messages route documented anywhere in its guide or CLI reference. The hand-rolled Server-primitive + inference-engine path stays admissible: vLLM already confirms exposing a /v1/messages route matching this apiType (see lm/research/engines).
 ---
 [lm/bakeoff/report] Publish bakeoff observations (notstarted)
 Publish raw and summarized observations for every admitted cell under the ruled protocol.
@@ -139,6 +150,9 @@ The owner leads the evaluation shape; the agent drafts the executable contract.
 Accept: the owner confirms the contract can distinguish a stack suitable for the destination.
 -> lm/design/api-surface
 -> lm/design/model-cells
+-> lm/research/engine-sglang
+-> lm/research/engine-trtllm
+-> lm/research/engine-vllm
 -> lm/research/engines
 > No serving engine has prior status. Admit vLLM, SGLang, TensorRT-LLM, or another challenger only when the research gates show the exact model and required VS Code surface are supportable.
 ---
@@ -148,10 +162,17 @@ Accept: each admitted cell has a falsifiable load hypothesis, bounded cost, and 
 -> lm/research/model-footprint
 > The base model identity is fixed by the owner as Qwen/Qwen3-Next-80B-A3B-Instruct. Quantized artifact revisions, GPU count, and GPU type remain bakeoff cells.
 ---
-[lm/research/model-footprint] Resolve model footprint and artifact candidates (notstarted)
+[lm/research/model-footprint] Resolve model footprint and artifact candidates (reviewing)
 Measure repository bytes and dtype counts, calculate memory floors, resolve exact revisions, and identify first-party versus community quantizations.
 Known 2026-07-17: official FP8 revision c5f5f263bdd5cc134092897864e8905d8fe7b928 has 82,051,854,384 safetensor bytes (76.417 GiB): 80,636,542,976 FP8, 688,319,744 BF16, and 4,921,664 F32 parameters. This is a storage floor, not measured runtime VRAM. Qwen publishes BF16 and FP8; a one-GPU 4-bit artifact is unresolved.
+Known 2026-07-19: four community 4-bit quantizations of Qwen3-Next-80B-A3B-Instruct exist, all verified via HF's /api/models/{repo} JSON metadata (ground truth, not inference):
+- cyankiwi/Qwen3-Next-80B-A3B-Instruct-AWQ-4bit: safetensors total 83,791,264,000 bytes (I8:150,528 + I32:78,920,024,064 + BF16:4,871,089,408); on-disk usedStorage 49,264,875,838 bytes; format pack-quantized/compressed-tensors, 4-bit.
+- RedHatAI/Qwen3-Next-80B-A3B-Instruct-NVFP4: on-disk usedStorage 47,607,840,091 bytes; format nvfp4-pack-quantized/compressed-tensors, 4-bit; sha b6787aea86799bf50a6e98ee61cd9398b5875578; createdAt/lastModified 2025-12-12.
+- RESMP-DEV/Qwen3-Next-80B-A3B-Instruct-NVFP4: on-disk usedStorage 47,607,840,091 bytes (same figure as RedHatAI's NVFP4 build -- plausible given identical quant recipe on the identical base model, not yet independently explained); format nvfp4-pack-quantized/compressed-tensors, 4-bit, num_experts 512, num_experts_per_tok 10; sha 847622526019580d433b196a5c928962d7761ce7; createdAt 2025-10-09.
+- dazipe/Qwen3-Next-80B-A3B-Instruct-GPTQ-Int4A16: safetensors.parameters I64:14,756 + I32:77,309,411,328 + F16:4,780,899,072, total field 14,444,722,944; on-disk usedStorage 48,278,078,133 bytes; sha 85a28780005de72fd934d00109ed034839bbea26; createdAt 2025-10-29.
+Note: HF's safetensors dtype breakdown reports the packed storage dtype (I8/I32/F16/BF16), not the logical bit-width -- the true quantization (4-bit) only appears in config.quantization_config, consistent across all four checkpoints.
 Report: checkpoint bytes, runtime-memory unknowns, documented engine/GPU requirements, and candidate handles; do not infer fit from active parameter count.
+-> ssm
 @guidance text/html https://huggingface.co/Qwen/Qwen3-Next-80B-A3B-Instruct
 @guidance text/html https://huggingface.co/Qwen/Qwen3-Next-80B-A3B-Instruct-FP8
 ---
@@ -159,21 +180,54 @@ Report: checkpoint bytes, runtime-memory unknowns, documented engine/GPU require
 Choose which VS Code Custom Endpoint API types enter the bakeoff: Chat Completions, Responses, and/or Messages.
 Accept: each admitted surface has an end-to-end streaming and tool-result round-trip witness.
 -> lm/research/vscode-contract
+> Owner decision 2026-07-18: target the latest Anthropic-compatible (Messages apiType) Custom Endpoint surface for the trial. Chat Completions and Responses are not admitted to the bakeoff unless a later gap requires them.
 ---
-[lm/research/vscode-contract] Resolve VS Code provider contract (notstarted)
+[lm/research/vscode-contract] Resolve VS Code provider contract (reviewing)
 Extract the current Custom Endpoint request, streaming, tool-calling, credential, token-limit, and agent-mode requirements from pinned first-party docs and focused probes.
 Known 2026-07-17: VS Code Custom Endpoint offers Chat Completions, Responses, and Messages API types; agent mode requires tool calling; VS Code discovers and invokes MCP tools.
+Known 2026-07-19: The Custom Endpoint provider (vendor: customendpoint, replaces the deprecated "OpenAI Compatible" provider) selects apiType per model: chat-completions | responses | messages, configured in a chatLanguageModels.json file. Per-model fields: id (model id sent to API), name (picker display name), url (full endpoint URL), apiType (optional per-model override of provider default), toolCalling (bool -- required true for the model to appear in the picker at all, and mandatory for agent mode), vision (bool), maxInputTokens + maxOutputTokens (sum defines the context window shown in UI), editTools (optional array: find-replace/multi-find-replace/apply-patch/code-rewrite), thinking (bool), streaming (bool, default true), zeroDataRetentionEnabled (bool -- when true, suppresses previous_response_id in Responses-API requests), supportsReasoningEffort (array of levels, e.g. minimal/low/medium/high -- enables a Thinking Effort picker), reasoningEffortFormat (chat-completions sends top-level reasoning_effort string; responses sends nested reasoning.effort object), requestHeaders (extra HTTP headers; reserved/forbidden headers ignored). Provider-level fields: vendor, name (group display), apiKey, apiType (default), models[].
+Known 2026-07-19 (MCP): configured via .vscode/mcp.json (workspace, shareable) or user-profile mcp.json; server entries are either stdio (command + args) or http/url (remote); example config shows both a remote http MCP server and a local stdio server via npx. VS Code auto-discovers tools on server start; first start requires an explicit user trust confirmation. Sandboxing (sandboxEnabled + sandbox.filesystem/network allow-lists) is available for local stdio servers on macOS/Linux only (not Windows) and auto-approves tool calls when active.
+Gap not yet closed: neither VS Code docs page states the literal wire-level JSON request/response body shape (message roles, SSE streaming chunk format, tool_call schema on the wire) -- both pages describe configuration/UI flow only. Since apiType values map directly onto OpenAI's Chat Completions API, OpenAI's Responses API, and Anthropic's Messages API by name, the wire contract for each is inferable from those APIs' own published specs, but this inference is not itself confirmed by VS Code's documentation text.
 Report: exact fields and observed wire behavior for each candidate API type.
+-> ssm
 @guidance text/html https://code.visualstudio.com/docs/agent-customization/language-models
 @guidance text/html https://code.visualstudio.com/docs/agent-customization/mcp-servers
 ---
-[lm/research/engines] Resolve admissible serving engines (notstarted)
+[lm/research/engines] Resolve admissible serving engines (reviewing)
 Build a first-party support matrix for the exact Qwen3-Next architecture and artifact candidates across vLLM, SGLang, TensorRT-LLM, and any challenger that passes all gates.
 Known 2026-07-17: vLLM's Qwen3-Next recipe uses TP4, prefix caching, and Hermes tool parsing; Qwen's official SGLang command also uses TP4. Neither is a selection or proof that one 96 GB GPU cannot work.
+Known 2026-07-19: TensorRT-LLM's PyTorch-backend "Model-Feature Support Matrix (Key Models)" lists Qwen3NextForCausalLM as a supported row, but this pass did not capture the table's column headers, so the row's Yes/No/Untested values cannot yet be mapped to named features -- gap remains. A footnote on that table flags relatively low accuracy for Qwen3-Next-80B-A3B on the SciCode-AA-v2 benchmark specifically. TensorRT-LLM's separate hardware support-matrix page (reference/support-matrix.html) lists only GPU architecture families (GB200 NVL72, Blackwell, Grace Hopper Superchip, Hopper, Ada Lovelace, Ampere) -- no per-SKU "RTX Pro 6000 SE" entry was found. A prior web-search claim that TensorRT-LLM's docs "explicitly list the RTX Pro 6000 SE" in a hardware matrix is NOT corroborated by direct fetch of that page and should be treated as unconfirmed pending further check.
+Known 2026-07-19 (vLLM tool calling): --enable-auto-tool-choice plus --tool-call-parser selects a model-specific parser; vLLM's own docs recommend --tool-call-parser hermes for Qwen2.5/QwQ models (chat template already ships Hermes-style tool-use support), and a separate qwen3_xml parser exists specifically for Qwen3-Coder models. No Qwen3-Next-specific parser is named in vLLM's tool-calling doc; Hermes is the documented fallback for the Qwen family generally, but this has NOT been independently confirmed for Qwen3-Next-80B-A3B -- gap remains. Streaming tool-call extraction is a first-class parser interface (extract_tool_calls_streaming). tool_choice modes: auto (schema-constrained only when strict:true is set on a tool, gated by VLLM_ENFORCE_STRICT_TOOL_CALLING default true) / required (always schema-constrained) / none.
+Known 2026-07-19 (VS Code API-type coverage): vLLM's OpenAI-compatible server exposes /v1/chat/completions (matches VS Code's "Chat Completions" apiType), /v1/responses (matches "Responses"), and /v1/messages (matches "Messages", Anthropic-compatible) -- all three VS Code Custom Endpoint API types have a corresponding vLLM server endpoint.
 Gates: load support, selected quantization/GPU support, VS Code-compatible API, streamed automatic tool calls, tool-result continuation, and measurable runtime statistics.
 Report exclusions with evidence; do not carry unsupported engines into the bakeoff.
+-> ssm
 @guidance text/html https://docs.vllm.ai/projects/recipes/en/latest/Qwen/Qwen3-Next.html
 @guidance text/html https://docs.vllm.ai/en/stable/serving/online_serving/
 @guidance text/html https://docs.vllm.ai/en/stable/features/tool_calling/
 @guidance text/html https://docs.vllm.ai/en/stable/usage/security/#api-key-authentication-limitations
 @guidance text/html https://docs.vllm.ai/en/stable/features/automatic_prefix_caching/
+---
+[lm/research/engine-vllm] Resolve vLLM shape and tradeoffs (notstarted)
+Gather first-party vLLM documentation URLs to build a thorough, source-cited understanding of vLLM's general shape and tradeoffs as a serving engine.
+Cover: model/architecture load support; quantization and GPU support; which VS Code-compatible API surfaces it exposes (Chat Completions, Responses, Messages/Anthropic) and their exact request/response shape; tool-calling support (streamed automatic tool calls, tool-result continuation, parser/config requirements); auth and security posture; observable runtime/operational statistics.
+Report exclusions with evidence; no preferred verdict.
+-> lm/research/engines
+-> ssm
+---
+[lm/research/engine-sglang] Resolve SGLang shape and tradeoffs (notstarted)
+Gather first-party SGLang documentation URLs to build a thorough, source-cited understanding of SGLang's general shape and tradeoffs as a serving engine.
+Cover: model/architecture load support; quantization and GPU support; which VS Code-compatible API surfaces it exposes (Chat Completions, Responses, Messages/Anthropic) and their exact request/response shape; tool-calling support (streamed automatic tool calls, tool-result continuation, parser/config requirements); auth and security posture; observable runtime/operational statistics.
+Report exclusions with evidence; no preferred verdict.
+-> lm/research/engines
+-> ssm
+---
+[lm/research/engine-trtllm] Resolve TensorRT-LLM shape and tradeoffs (notstarted)
+Gather first-party TensorRT-LLM documentation URLs to build a thorough, source-cited understanding of TensorRT-LLM's general shape and tradeoffs as a serving engine.
+Cover: model/architecture load support; quantization and GPU support; which VS Code-compatible API surfaces it exposes (Chat Completions, Responses, Messages/Anthropic) and their exact request/response shape; tool-calling support (streamed automatic tool calls, tool-result continuation, parser/config requirements); auth and security posture; observable runtime/operational statistics.
+Report exclusions with evidence; no preferred verdict.
+-> lm/research/engines
+-> ssm
+---
+ref [ssm] Scout source management (proposals/scout-source-management.vine)
+Frontloaded tooling: generalized scout source add/refresh command plus per-task vine chunking, so the research tasks below gain a settled onboarding/refresh path and a chunked vine corpus before they run.

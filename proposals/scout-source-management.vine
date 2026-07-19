@@ -1,0 +1,85 @@
+vine 1.2.0
+prefix: ssm
+title: Scout source management
+---
+[ssm] Generalize scout source onboarding and indexing (planning)
+A single scout command replaces the current per-vendor pattern (a bespoke
+fetch_modal_docs.py-shaped script per source, a hand-added tuple in
+search.py's DOCS_SOURCES, a manual search.py --update run). One command
+registers a new remote source with a TTL, fetches it, and indexes it; the
+same command re-fetches and re-indexes any already-registered source whose
+TTL has expired, replacing today's read-the-warning-then-copy-the-refresh-
+command manual loop.
+Vine graphs are workspace-authored planning artifacts scout never indexes
+today; add them as a first-class chunked corpus alongside spec/notes/
+proposals/docs, using structural (per-task) chunking rather than raw word
+windows, since a task is already the natural retrievable unit.
+-> ssm/design/command-surface
+-> ssm/design/source-registry
+-> ssm/design/vine-chunking
+-> ssm/design/vine-corpus
+-> ssm/implement/source-command
+-> ssm/implement/vine-indexing
+---
+[ssm/design/source-registry] Design a generic source descriptor (notstarted)
+Replace the ad hoc DOCS_SOURCES tuple (vendor name, mirror dir) and the
+one-off per-vendor fetch script (fetch_modal_docs.py's llms.txt-walk-and-
+mirror logic) with a single descriptor shape covering every source kind
+scout will fetch: name, origin URL, ttl_days, fetch strategy (e.g.
+llms-txt-mirror, arxiv/openreview pdf, future kinds), and the artifact path
+under resources/. The descriptor is the registry entry; sources.json (via
+freshness.py) remains the fetched-state ledger, not the registry itself.
+No new source-specific script should need to be hand-written after this
+lands -- adding a source is filling in a descriptor, not authoring code.
+---
+[ssm/design/vine-chunking] Design per-task chunking for vine files (notstarted)
+A .vine file is a structured task graph, not prose -- word-windowing it like
+a markdown file would split a task's id/name/description/decisions across
+arbitrary chunk boundaries and return a self-citing id that names no real
+unit. Design a chunker that parses each vine into its task blocks (reusing
+bacchus's vine parser semantics: id, name, status, description, decisions)
+and emits one chunk per task, self-citing as "<vine-stem>#<task-id>#vine"
+(or similar), including ref blocks. A task whose description exceeds
+comfortable embedding length may still need internal windowing -- decide
+whether that stays out of scope for the first cut or is handled by
+sub-chunking within a task while preserving the task-id citation.
+---
+[ssm/design/vine-corpus] Decide where vine chunks attach in search.py (notstarted)
+Given per-task chunking from ssm/design/vine-chunking, decide which corpus
+absorbs vine chunks. Vines are workspace-authored planning text (like spec/
+notes/proposals), not third-party material and not vendor docs, so the
+workspace corpus is the default candidate -- confirm no separation concern
+(a vine task chunk competing against spec/proposal prose in the same
+ranked results) forces a fourth corpus instead. Wire the chosen glob
+(root localmodal.vine, proposals/**/*.vine, any future vine locations)
+into workspace_chunks() alongside the existing spec/notes/proposals/doc
+sources, using the chunker from ssm/design/vine-chunking rather than the
+existing word-window helper.
+-> ssm/design/vine-chunking
+---
+[ssm/implement/source-command] Implement the generalized add/refresh command (notstarted)
+Build the single command from ssm/design/source-registry: given a
+descriptor (new source) or no argument (scan sources.json for TTL-expired
+or artifact-absent entries via freshness.warnings_for), fetch each and
+stamp it via freshness.stamp, then run search.py's update path so the
+result is searchable immediately. This supersedes fetch_modal_docs.py and
+any future per-vendor script as the onboarding path -- once this lands,
+no ancestor task or doc should still instruct a user to write a new
+vendor-specific fetch script; existing vendor scripts may be kept working
+underneath as fetch-strategy implementations, but are no longer the
+public entry point for adding a source.
+-> ssm/design/command-surface
+-> ssm/design/source-registry
+---
+[ssm/implement/vine-indexing] Implement vine parsing and corpus wiring (notstarted)
+Implement the per-task chunker designed in ssm/design/vine-chunking and
+wire it into workspace_chunks() per the attachment point decided in
+ssm/design/vine-corpus. Confirm docs_search/workspace_search-style self-
+citing ids resolve back to a real task via vine_read, the same way a
+paper/doc citation resolves back to its source page.
+-> ssm/design/vine-corpus
+---
+[ssm/design/command-surface] Design the scout command surface (notstarted)
+Before any implementation starts, carefully design and encapsulate the actual surface a caller invokes: is it a scout MCP tool, a resources/ CLI script, or both; its exact argument shape (new-source descriptor vs. no-argument refresh scan); its output/error contract; and how it stays isolated from the fetch-strategy internals in ssm/design/source-registry so a new fetch strategy never changes the calling contract.
+Accept: the owner confirms one settled invocation surface and argument/output contract before ssm/implement/source-command begins.
+-> ssm/design/source-registry
