@@ -17,26 +17,130 @@ proposals/docs, using structural (per-task) chunking rather than raw word
 windows, since a task is already the natural retrievable unit.
 -> ssm/design/chunk-adapters
 -> ssm/design/command-surface
+-> ssm/design/fetch-admission
+-> ssm/design/fresh-source-refetch
+-> ssm/design/scout-config
+-> ssm/design/source-artifact-contract
+-> ssm/design/source-lifecycle
 -> ssm/design/source-registry
 -> ssm/design/vine-chunking
 -> ssm/design/vine-corpus
 -> ssm/implement/add-source
+-> ssm/implement/freshness-presentation
+-> ssm/implement/onboarding-migration
 -> ssm/implement/refresh-stale
+-> ssm/implement/source-control-plane
 -> ssm/implement/vine-indexing
+-> ssm/verify/source-management
 ---
-[ssm/design/source-registry] Design a generic source descriptor (notstarted)
-Replace the ad hoc DOCS_SOURCES tuple (vendor name, mirror dir) and the
-one-off per-vendor fetch script (fetch_modal_docs.py's llms.txt-walk-and-
-mirror logic) with a single descriptor shape covering every source kind
-scout will fetch: name, origin URL, ttl_days, fetch strategy (e.g.
-llms-txt-mirror, arxiv/openreview pdf, future kinds), and the artifact path
-under resources/. The descriptor is the registry entry; sources.json (via
-freshness.py) remains the fetched-state ledger, not the registry itself.
-No new source-specific script should need to be hand-written after this
-lands -- adding a source is filling in a descriptor, not authoring code.
+[ssm/design/source-artifact-contract] Design source descriptor-to-artifact contract (notstarted)
+The public source row is fixed: name, origin URL, type, and ttl_days. The
+single sources.json ledger retains that declaration together with fetched
+state; there is no separate descriptor entity and no additional public source
+fields to choose here. Today search.py needs a corpus and a local artifact
+root while the existing fetchers have different collection shapes. The owner
+decides the deterministic mapping from the declared row to one corpus and one
+artifact location, whether this ledger covers only pinned docs or other
+remote corpora too, and the output contract a fetch implementation returns to
+the source manager. Settle the vocabulary boundary too: a remote source's
+fetch/content type must not be conflated with the independent chunk-adapter
+kind introduced in ssm/design/chunk-adapters. The result is the contract
+consumed by the ledger, lifecycle, admission, and command-surface designs.
+Accept: the owner confirms how every registered source resolves to one corpus,
+one artifact location, and one fetch-result shape.
+---
+[ssm/design/source-registry] Design the source ledger and its CRUD operations (notstarted)
+Redefine the source registry as a single ledger -- sources.json's existing role
+(fetched-state) absorbs the registry too; there is no separate descriptor
+entity. Each record retains the fixed declared row: name, origin URL, type
+(the content shape scout should expect back; unset defaults to 'http', a plain
+mirror/curl fetch -- no per-source fetch-strategy concept), ttl_days, plus its
+fetched state. Callers operate on the ledger via CRUD: one call carries a
+batch of rows, each tagged add/update/remove, since ledger changes are
+naturally batched (a handful of sources at a time) rather than one at a time.
+The ledger stays small by design -- every access reads and locks the whole
+file, no partial or indexed access.
+Add rows apply directly as source registration, not as a claim that their
+artifact has fetched or their index has published; ssm/design/source-lifecycle
+owns those later states. Remove and update rows use a crash-safe two-step
+protocol: durably append the remove/update intent to the end of the ledger
+first, then atomically apply it in one write (deleting both the intent marker
+and the target row for a remove; replacing the target for an update). An
+interruption between the two steps leaves the intent behind, so the operation
+always completes on the next access instead of landing half-done.
+The durable intent needs a representation that stays readable and recoverable
+on every access; a raw append to a standalone JSON object cannot itself be
+that representation. Decide the ledger's one writer and migration boundary:
+existing vendor fetchers cannot continue to mutate it through a separate
+freshness.stamp path that bypasses locking and recovery. Define source
+identity and batch semantics too: duplicate names, divergent same-name adds,
+stale re-adds, operation ordering within a batch, and whether a batch reports
+per-row partial results or has an atomic outcome.
+Needs failure/timeout configuration (lock-wait duration, retry policy) for
+ledger access -- see ssm/design/scout-config. Freshness selection must be a
+structured result shared by refresh and warning presentation, not a refresh
+parser for user-facing warning strings.
+-> ssm/design/source-artifact-contract
+-> ssm/design/scout-config
+---
+[ssm/design/source-lifecycle] Design the source artifact-to-index lifecycle (notstarted)
+Given the settled registry behavior, decide the artifact-to-index transition
+after an added, updated, removed, or refreshed source is registered. A direct
+add record is not itself a fetched or searchable success. Current fetchers
+can replace an artifact before all remote pages succeed, while freshness only
+knows whether an artifact is present; metadata-only crash recovery cannot
+distinguish a complete pin from a nonempty partial replacement. The owner
+decides the commit/recovery states for a failed fetch, interruption between
+durable intent and final state, index-update failure after a successful fetch,
+and removal. The result states which stages make a command row successful and
+which recovery action occurs on its next access.
+Accept: the owner confirms a failure-state table in which no partial artifact
+can masquerade as a completed fresh source.
+-> ssm/design/source-registry
+---
+[ssm/design/fetch-admission] Design remote fetch admission and resource policy (notstarted)
+Given the source descriptor-to-artifact contract, decide the rules enforced
+before Scout fetches a caller-supplied remote origin: accepted URL schemes,
+redirect policy, expected content handling, response-size bounds, and the
+division between fixed source semantics and tunable Scout operational config.
+This task owns enforcement policy; command-surface design only decides how
+callers supply a row and receive a rejected or failed outcome. The settled
+policy must be usable by the shared control plane for both CLI and MCP calls.
+Accept: the owner confirms the admission and resource contract, including how
+each refused or exceeded limit is reported without claiming a lifecycle stage
+that was not reached.
+-> ssm/design/source-artifact-contract
+---
+[ssm/design/fresh-source-refetch] Decide the fresh-source refetch policy (notstarted)
+The current two-command intent says a still-fresh re-add is a no-op and that
+refresh-stale selects only stale or absent entries, leaving no settled answer
+for an operator who wants to re-fetch a healthy source. The owner decides
+whether that operation is intentionally unavailable or belongs within one of
+the two public command contracts; do not silently add a third public command
+or assign fresh work to a stale-only command. The result tells command-surface
+and control-plane work how freshness affects an explicit caller request.
+Accept: the owner confirms the behavior of a caller-requested refetch for a
+still-fresh source and the result terminology shown on both surfaces.
+-> ssm/design/source-lifecycle
 ---
 [ssm/design/vine-chunking] Design per-task chunking for vine files (notstarted)
-Given the chunk-type-adapter interface from ssm/design/chunk-adapters, design vine's adapter: parse a .vine file into its task blocks (reusing bacchus's vine parser semantics: id, name, status, description, decisions) and emit one chunk per task, self-citing as "<vine-stem>#<task-id>#vine" (or similar), including ref blocks. A task whose description exceeds comfortable embedding length may still need internal windowing -- decide whether that stays out of scope for the first cut or is handled by sub-chunking within a task while preserving the task-id citation.
+Given the chunk-type-adapter interface from ssm/design/chunk-adapters, design
+vine's adapter: parse a .vine file into its task blocks (reusing bacchus's
+vine parser semantics: id, name, status, description, decisions) and emit one
+chunk per task, self-citing as "<vine-stem>#<task-id>#vine" (or similar). A
+task whose description exceeds comfortable embedding length may still need
+internal windowing -- decide whether that stays out of scope for the first cut
+or is handled by sub-chunking within a task while preserving the task-id
+citation.
+Settle the local parser boundary and versioned semantics used at indexing time;
+the indexer must not need a live MCP vine_read call to parse a file. A citation
+must retain an unambiguous repo-relative file locator plus task id so a result
+can resolve back through vine_read even when vine stems collide. A ref block
+is a proxy rather than a task: the owner decides whether refs emit chunks at
+all; if they do, the adapter must define a distinct ref citation and a
+ref-aware resolution contract rather than promise task lookup for a proxy.
+Decide how an emitted ref result relates to the referred graph without silently
+producing ambiguous duplicates.
 -> ssm/design/chunk-adapters
 ---
 [ssm/design/vine-corpus] Decide where vine chunks attach in search.py (notstarted)
@@ -54,25 +158,157 @@ existing word-window helper.
 ---
 [ssm/implement/vine-indexing] Implement vine parsing and corpus wiring (notstarted)
 Implement the chunk-type-adapter mechanism designed in ssm/design/chunk-adapters, using it to host the vine adapter designed in ssm/design/vine-chunking, wired into workspace_chunks() per the attachment point decided in ssm/design/vine-corpus. Confirm self-citing ids resolve back to a real task via vine_read, the same way a paper/doc citation resolves back to its source page.
+Use the settled local parser boundary rather than invoking MCP while building
+the index. Test task citations against vine_read; if the settled adapter emits
+ref chunks, test their distinct citation against the settled ref-aware
+resolution contract rather than treating a ref proxy as a task.
 -> ssm/design/chunk-adapters
 -> ssm/design/vine-corpus
 ---
 [ssm/design/command-surface] Design the scout command surface (notstarted)
-Before any implementation starts, carefully design and encapsulate the two invocation surfaces: (1) idempotently add a new source -- descriptor in, fetch+index it, no-op if already registered and unexpired; (2) refresh all sources past their TTL -- no argument, scans and re-fetches only stale/missing entries. Each command needs its own representation on both the CLI and the MCP tool surface: exact argument shape, output/error contract, and how both stay isolated from the fetch-strategy internals in ssm/design/source-registry so a new fetch strategy never changes either calling contract.
+Before any implementation starts, carefully design and encapsulate the two
+invocation surfaces: (1) a ledger CRUD command -- takes a batch of rows
+(add/update/remove), each row naming a type (default 'http') per
+ssm/design/source-registry, applies them to the ledger, fetching and indexing
+any added/updated source; (2) refresh all sources past their TTL -- no
+argument, scans and re-fetches only stale/missing entries, applying its own
+re-fetch results as ledger updates via the same crash-safe protocol. Resolve
+the public-name/scope mismatch too: either add-source is the public name for
+the full batch CRUD command or the public name changes, so readers never have
+to infer whether update and remove are externally available.
+Each command needs its own representation on both the CLI and the MCP tool
+surface: exact argument shape, output/error contract (per-row success/failure
+in a batch), and how both stay isolated from the ledger's internal
+locking/crash-safety mechanics in ssm/design/source-registry so those
+internals can change without changing either calling contract. Apply the
+settled fetch-admission and fresh-source-refetch policies; row outcomes must
+name the lifecycle stage reached, not merely conceal a fetch, ledger, or
+indexing failure.
 Accept: the owner confirms the settled two-command CLI + MCP contract before ssm/implement/add-source and ssm/implement/refresh-stale begin.
+-> ssm/design/fetch-admission
+-> ssm/design/fresh-source-refetch
 -> ssm/design/source-registry
+-> ssm/design/source-lifecycle
 ---
 [ssm/design/chunk-adapters] Design chunk-type adapters for scout (notstarted)
-Scout's three corpora (papers/docs/workspace) each chunk every source the same fixed way today: a word-window with overlap, no override. There is no mechanism for a source to declare its own shape and get chunked accordingly. Treat this as a typing problem: design a general chunk-type-adapter interface -- how a source declares a type/kind, how a corpus dispatches to the matching adapter instead of the default word-window chunker, and what an adapter must produce (chunk id, chunk text) to stay compatible with the existing self-citing-id and indexing pipeline (content-hash _sig, manifest.json, versioned index publish).
-Minimize assumptions about the first consumer: the vine per-task chunker (ssm/design/vine-chunking) is one adapter instance under this interface, not a special case hardcoded into workspace_chunks(). A future PDF-structure, code-AST, or other structured-source adapter should register the same way.
+Scout's three corpora (papers/docs/workspace) each chunk every source the same
+fixed way today: a word-window with overlap, no override. There is no
+mechanism for a corpus input to associate its own structural shape with a
+chunker. Treat this as a typing problem: design a general chunk-type-adapter
+interface -- how a corpus input is assigned a chunk kind, how a corpus
+dispatches to the matching adapter instead of the default word-window chunker,
+and what an adapter must produce (chunk id, chunk text) to stay compatible
+with the existing self-citing-id and indexing pipeline (content-hash _sig,
+manifest.json, versioned index publish). Minimize assumptions about the first
+consumer: the vine per-task chunker (ssm/design/vine-chunking) is one adapter
+instance under this interface, not a special case hardcoded into
+workspace_chunks(). A future PDF-structure, code-AST, or other
+structured-source adapter should register the same way.
+This task does not define a remote source's type field or its fetch behavior;
+the source-artifact contract owns that distinct vocabulary boundary.
 Accept: the owner confirms one adapter interface shape before ssm/design/vine-chunking is finalized against it.
 ---
-[ssm/implement/add-source] Implement the add-source command (notstarted)
-Build the idempotent add command from ssm/design/source-registry and ssm/design/command-surface: given a new source descriptor (name, origin URL, ttl_days, fetch strategy), register it, fetch it, stamp it via freshness.stamp, then run search.py's update path so the result is searchable immediately. Idempotent: re-running with the same descriptor for an already-registered, still-fresh source is a no-op (or an explicit no-op report), not a re-fetch -- re-fetching an unexpired source is the refresh command's job, not this one's. Exposed on both surfaces settled in ssm/design/command-surface: a CLI subcommand and an MCP tool. This supersedes fetch_modal_docs.py and any future per-vendor script as the onboarding path -- once this lands, no ancestor task or doc should still instruct a user to write a new vendor-specific fetch script; existing vendor scripts may be kept working underneath as fetch-strategy implementations, but are no longer the public entry point for adding a source.
--> ssm/design/command-surface
+[ssm/implement/source-control-plane] Implement the shared source control plane (notstarted)
+Implement the settled config reader, ledger mutation and recovery API,
+structured freshness state, and artifact-to-index lifecycle behind one local
+control-plane interface. This task owns the shared behavior used by both
+source commands; command implementations neither manipulate the ledger nor
+derive staleness directly. It owns fetch dispatch, including the declared
+default http implementation for a new caller-supplied origin, and routes any
+existing vendor fetcher through the same settled result shape; no direct
+freshness.stamp mutation bypass remains. Enforce the settled remote
+fetch-admission policy and support the settled fresh-source-refetch behavior
+through this one interface rather than duplicating either concern in a CLI or
+MCP wrapper.
+Accept: one operation path owns all ledger writes and recovery, and its output
+is sufficient for either CLI or MCP code to report each row's lifecycle state;
+the default http type fetches an admitted deterministic fixture through that
+same path.
+-> ssm/design/fetch-admission
+-> ssm/design/fresh-source-refetch
+-> ssm/design/scout-config
+-> ssm/design/source-lifecycle
 -> ssm/design/source-registry
 ---
-[ssm/implement/refresh-stale] Implement the refresh-stale command (notstarted)
-Build the refresh command: no source argument, scan sources.json for TTL-expired or artifact-absent entries via freshness.warnings_for, re-fetch each, re-stamp via freshness.stamp, then run search.py's update path. Only touches sources already past their TTL (or missing their artifact) -- never re-fetches a still-fresh source, and never registers a new source (that is the add-source command's job, not this one's). Exposed on both surfaces settled in ssm/design/command-surface: a CLI subcommand and an MCP tool.
+[ssm/implement/add-source] Implement the add-source command (notstarted)
+Build the settled public batch mutation command from
+ssm/implement/source-control-plane and ssm/design/command-surface: given a
+batch of rows (add/update/remove, each row naming a type that defaults to
+'http'), invoke the settled lifecycle so added/updated sources become
+searchable only at the contract's successful stage. Add is idempotent:
+re-adding an already-registered, still-fresh source is a no-op (or an explicit
+no-op report), never a silent re-fetch. Any caller-requested fresh refetch
+follows ssm/design/fresh-source-refetch rather than being assigned to the
+stale-only refresh command. Expose the command on both surfaces settled in
+ssm/design/command-surface: a CLI subcommand and an MCP tool. Existing vendor
+fetchers may remain internal fetch implementations, but each must participate
+in the shared control-plane lifecycle.
 -> ssm/design/command-surface
--> ssm/design/source-registry
+-> ssm/implement/source-control-plane
+---
+[ssm/implement/refresh-stale] Implement the refresh-stale command (notstarted)
+Build the refresh command: no source argument, obtain the settled structured
+TTL-expired or artifact-absent selection from the shared control plane,
+re-fetch each source through its lifecycle, and publish the resulting index
+update. Its stale/absent-only scope and any separate caller-requested
+fresh-source behavior follow ssm/design/fresh-source-refetch; it never
+registers a new source (that is the batch mutation command's job). Expose it
+on both surfaces settled in ssm/design/command-surface: a CLI subcommand and
+an MCP tool.
+-> ssm/design/command-surface
+-> ssm/implement/source-control-plane
+---
+[ssm/implement/onboarding-migration] Migrate source onboarding references (notstarted)
+After both public source commands exist, audit the repository's README,
+Scout-facing descriptions, command examples, and other user-facing guidance.
+Replace instructions that tell a user to create or invoke a vendor-specific
+fetch script as the onboarding path with the settled public command contract.
+Existing vendor fetch implementations may remain internal and must not be
+advertised as the way to register a source. This task owns the documentation
+and usage migration only, not the command or control-plane implementation.
+Accept: the audit records every changed public reference and finds no remaining
+onboarding instruction that requires a new bespoke vendor fetch script.
+-> ssm/implement/add-source
+-> ssm/implement/refresh-stale
+---
+[ssm/implement/freshness-presentation] Migrate freshness warnings to the public refresh path (notstarted)
+Adapt the search-facing freshness warning consumer to consume the structured
+freshness state from ssm/implement/source-control-plane. A stale or absent
+source must still scream in the affected corpus results, but its recovery
+guidance must use the settled public refresh-stale command contract rather
+than a source-specific fetch-script string. This task owns presentation and
+search-worker wiring only; it does not select stale sources or mutate the
+ledger.
+Accept: a stale and an absent deterministic fixture each produce a corpus
+warning that names the public recovery path, and neither warning exposes a
+legacy per-vendor refresh command.
+-> ssm/design/command-surface
+-> ssm/implement/source-control-plane
+-> ssm/implement/refresh-stale
+---
+[ssm/design/scout-config] Design where scout's own operational config lives (notstarted)
+Scout needs operational settings beyond source data itself -- ledger lock-wait
+timeout, retry/failure policy for the CRUD protocol in
+ssm/design/source-registry, and any resource bounds the settled fetch-admission
+policy classifies as tunable. Design where this config lives: a checked-in file
+in the repo (not environment variables, not hardcoded constants), its shape,
+and how search.py and the CLI/MCP command surface read it. Keep it distinct
+from sources.json (which stays pure ledger data, not Scout's own operating
+parameters).
+-> ssm/design/fetch-admission
+---
+[ssm/verify/source-management] Verify source-management failure and recovery behavior (notstarted)
+Exercise the settled contract with deterministic local fixtures rather than
+live vendor traffic. Cover interrupted ledger intent recovery, a failed fetch
+that leaves no partial artifact looking like a completed fresh source, an
+index-update failure with its specified recovery state, batch outcome
+reporting, idempotent add behavior, the settled caller-requested fresh-source
+behavior, refresh selection limited to stale or absent sources, and the
+default http fetch path. Exercise both CLI and MCP representations against the
+same control-plane result contract, plus the search-facing warning presentation
+for stale and absent fixtures.
+Accept: the evidence records each scenario's observed lifecycle state and
+shows no command reports searchable success before the source is searchable.
+-> ssm/implement/add-source
+-> ssm/implement/freshness-presentation
+-> ssm/implement/refresh-stale
