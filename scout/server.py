@@ -7,7 +7,8 @@ Run (normally via .vscode/mcp.json, but works standalone):
 
 Tools:
   workspace_search(query, k) semantic hits from our own writing (spec,
-                            notes, proposals); hits self-cite the file.
+                                                        notes, proposals, root docs, VINE tasks/refs);
+                                                        hits self-cite the source or task.
   papers_search(query, k)   semantic hits from the third-party papers
                             (resources/pdf/*.pdf), self-citing paper#page#chunk.
   docs_search(query, k)     semantic hits from the pinned vendor docs
@@ -130,15 +131,15 @@ def _shutdown() -> None:
 atexit.register(_shutdown)
 
 
-SNIPPET_CHARS = 320  # per-hit preview cap: enough to judge relevance; the id is the
+SNIPPET_CHARS = 320  # per-hit preview cap: enough to judge relevance; the citation is the
                      # handle to the full source. Keeps a k-hit reply small enough to
                      # return inline instead of overflowing into a dumped, re-truncated file.
 
 
 def _search(source: str, label: str, query: str, k: int) -> str:
     """Send one query to the resident worker for the named index and format the hits.
-    Each hit is a compact preview (id + a capped snippet); the id self-cites the source
-    to read in full, so the preview is the contract, not a loss."""
+    Each hit is a compact preview (citation + a capped snippet); the citation
+    self-cites the source to read in full, so the preview is the contract, not a loss."""
     k = max(1, min(int(k), MAX_K))
     try:
         proc = _ensure_ready()
@@ -171,17 +172,19 @@ def _search(source: str, label: str, query: str, k: int) -> str:
             snippet = snippet[:SNIPPET_CHARS].rsplit(" ", 1)[0] + " ..."
         score = h.get("score")
         tag = f"{score:.3f}" if isinstance(score, float) else "  -  "
-        lines.append(f"[{tag}] {h['id']}\n  {snippet}")
-    # Third-party text either way (papers, or our own .md) -- same hygiene, same labeling.
+        lines.append(f"[{tag}] {h['citation']}\n  {snippet}")
+    # Search hit text is data either way -- same hygiene, same labeling.
     return banner + sanitize.wrap(label.upper(), sanitize.clean("\n".join(lines), max_chars=12000))
 
 
 def workspace_search(query: str, k: int = 6) -> str:
-    """Semantic search over our own writing: the human-owned spec, notes, and
-    proposals. Prefer this first — it is the ground for what we've already
-    established. Hits self-cite (e.g. 'initial-spec#spec#c2'); read the cited
-    file before building on it. The first call after server start may wait on
-    a one-time index load; later calls are sub-second."""
+    """Semantic search over our own writing: the human-owned spec, notes,
+    proposals, root docs, and structural VINE task/ref chunks. Prefer this
+    first — it is the ground for what we've already established. Hits self-cite
+    (for example, 'initial-spec#spec#c2' or
+    'proposals/scout-source-management.vine#ssm#vine'); read the cited source
+    before building on it. The first call after server start may wait on a
+    one-time index load; later calls are sub-second."""
     return _search("workspace", "workspace_search", query, k)
 
 

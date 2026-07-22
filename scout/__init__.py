@@ -1,7 +1,8 @@
 """scout — MCP server exposing the repo's search surfaces to agents.
 
 Tools:
-  workspace_search  txtai index over our own writing (spec, notes, proposals)
+  workspace_search  txtai index over our own writing (spec, notes, proposals,
+                    root docs, structural VINE tasks/refs)
   papers_search     txtai index over the third-party papers (resources/pdf/)
   docs_search       txtai index over pinned vendor docs (Modal and VS Code),
                     freshness-stamped (date + TTL; stale pins scream in-results)

@@ -649,7 +649,7 @@ introduced.
 > Discover root *.vine and proposals/**/*.vine deterministically.
 > Dispatch discovered VINE files through the vine-task adapter, never generic word windows.
 ---
-[ssm/implement/vine-indexing] Implement vine parsing and corpus wiring (started)
+[ssm/implement/vine-indexing] Implement vine parsing and corpus wiring (complete)
 Implement `resources/vine.py` as the shared settled local structural parser and
 canonical citation resolver, then use it to host the VINE adapter designed in
 ssm/design/vine-chunking and wire discovered VINE files into workspace_chunks()

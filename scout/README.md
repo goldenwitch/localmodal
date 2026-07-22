@@ -4,7 +4,7 @@ Exposes the repo's search surfaces as agent tools over stdio MCP:
 
 | tool | surface | trust |
 |---|---|---|
-| `workspace_search` | local txtai index ([resources/search.py](../resources/search.py)) over **our own writing**: the human-owned spec, notes, proposals | our results; prefer it first, hits self-cite, read the file before building on it |
+| `workspace_search` | local txtai index ([resources/search.py](../resources/search.py)) over **our own writing**: the human-owned spec, notes, proposals, root docs, and structural VINE tasks/refs | our results; prefer it first, hits self-cite, read the file/task before building on it |
 | `papers_search` | local txtai index over the **third-party papers** (`resources/pdf/`) | the literature; hits self-cite as `paper#page#chunk` |
 | `docs_search` | local txtai index over the **pinned vendor docs**: Modal (`resources/modal-docs/`) and VS Code (`resources/vscode-docs/`) | pinned ground with a date + TTL; hits self-cite as `path#vendor#chunk`; a stale or absent pin screams at the top of its results |
 | `web_search` | Gemini + Google Search grounding | **untrusted leads** — sanitized, delimited, citations from grounding metadata |
@@ -77,12 +77,13 @@ the rot are the same event; nothing goes quietly stale.
 Loading OpenBLAS-backed DLLs inside a threaded async server deadlocks on the
 Windows loader lock (observed live: py-spy showed `LoadLibraryExW` wedged
 against anyio's stdio reader). So the server talks line-JSON to a
-resident worker (`resources/search.py --serve`) that loads both indexes at
+resident worker (`resources/search.py --serve`) that loads all three corpora at
 startup and **hot-swaps** the routed one to a new version whenever a rebuild
-publishes one. Each corpus is independent: `resources/.index/papers/` and
-`resources/.index/workspace/` each hold versioned `v<ns>/` dirs behind their
-own atomic `CURRENT` pointer, so rebuilds never fight the worker for an open
-file and a papers rebuild never disturbs the workspace index. The
+publishes one. Each corpus is independent: `resources/.index/papers/`,
+`resources/.index/docs/`, and `resources/.index/workspace/` each hold versioned
+`v<ns>/` dirs behind their own atomic `CURRENT` pointer, so rebuilds never
+fight the worker for an open file and one corpus rebuild never disturbs the
+others. The
 conversation has no timeouts: every pipe read returns a line
 or EOF, both handled. The worker exits on stdin EOF — its stdin is its
 lifeline — so a dead server cannot orphan a worker, even when hard-killed.

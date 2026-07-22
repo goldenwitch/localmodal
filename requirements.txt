@@ -4,5 +4,7 @@ mcp==1.27.2
 google-genai==2.8.0
 txtai==9.10.0
 PyMuPDF==1.27.1
+# VINE segmentation directly uses the tokenizer API supplied transitively by txtai.
+transformers==4.57.1
 # TLS on Windows for fetch_papers.py (arXiv cert verification):
 certifi==2026.2.25
