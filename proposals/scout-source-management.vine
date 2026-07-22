@@ -225,33 +225,23 @@ parser for user-facing warning strings.
 -> ssm/design/source-artifact-contract
 -> ssm/design/source-publication-boundary
 ---
-[ssm/design/source-artifact-path] Design source identity to artifact-path mapping (notstarted)
-Given immutable declared-name source identity and the
-`resources/<safe-name>` root constraint, decide the deterministic safe-name
-mapping, collision behavior, and path stability rules. Settle what happens to a
-committed artifact path when an `add` upsert replaces its origin or other
-declaration fields, including publication, cleanup, and recovery behavior. The
-mapping must never let two source identities share one live artifact root or
-let a replacement/removal affect another source's artifact.
-Accept: the owner confirms a total one-to-one identity-to-artifact-path mapping
-and an unambiguous add-upsert/removal transition for committed snapshots.
+[ssm/design/source-artifact-path] Design source identity to artifact-path mapping (reviewing)
+Source names are lowercase ASCII `[a-z][a-z0-9-]{0,63}`. Their safe artifact root is exactly `resources/scout-source--<name>`, making the mapping total, one-to-one, stable, and case-safe on Windows. Each committed snapshot lives beneath `<root>/generations/<snapshot-id>/content`; `<snapshot-id>` is an opaque publication-qualified generation identifier. Candidate bytes are staged beneath the same root but never referenced by a publication until validation and index construction succeed. An `add` replacement retains old committed generations until no retained publication references them; a remove only makes a source unqueryable through a next publication, then cleanup may reclaim unreachable generations. No operation may traverse, rename, or delete another source root.
+Accept: deterministic fixtures prove distinct valid names map to distinct roots, an upsert gives the same source identity a new generation without changing its root, and removal/recovery cannot affect another source's artifacts.
 -> ssm/design/source-artifact-contract
 -> ssm/design/source-registry
+> Valid source names are lowercase ASCII `[a-z][a-z0-9-]{0,63}`.
+> Artifact root is exactly `resources/scout-source--<name>`; snapshot content is generation-qualified beneath that root.
+> Replacement/removal retain generations referenced by any retained publication and reclaim only unreachable generations.
 ---
-[ssm/design/batch-atomicity] Design source batch commit semantics (notstarted)
-The caller invariant requires exactly one source row and one outcome record for
-every proposed row. Complete design-time validation returns every failed `add` or
-`remove` row before runtime work; it does not itself decide whether an otherwise
-valid subset may be applied. Given the single-row publication boundary, the
-owner decides the batch commit and recovery contract for accepted mixed add/
-remove plans, including outcome terminology for rows that did not commit and
-the relation between batch-level failure and per-row outcomes.
-The result must never report a row as committed when its declaration, snapshot,
-and indexed-material membership did not cross the publication boundary together.
-Accept: the owner confirms one client-visible batch contract that preserves
-one outcome record per proposed row and unambiguous recovery after interruption.
+[ssm/design/batch-atomicity] Design source batch commit semantics (reviewing)
+A proposal first preflights every row against a virtual registry. Any rejected row yields its row diagnostics; if one or more rows are rejected, no runtime work occurs for any row. `remove` of an absent name is a successful `not_found` outcome and leaves virtual state unchanged. If preflight accepts every row, Scout stages every fetch-bearing add and prepares the one resulting indexed-material generation. A materialization/index/publication failure prevents the entire batch from committing: the failed row reports its reached stage and diagnostic, while every otherwise staged row reports `not_committed` with the batch failure reference. Only one successful publication commits the full accepted virtual registry; every add then reports `published`, every existing remove reports `removed`, and every absent remove reports `not_found`. Interrupted accepted work remains one journal operation and later recovery completes or reports the same batch; no valid subset commits independently.
+Accept: one client-visible batch result has exactly one outcome per input row; rejected proposals have no runtime trace; runtime failure commits no subset; and successful outcomes imply the source declaration, snapshot, and indexed-material membership crossed one publication together.
 -> ssm/design/source-publication-boundary
 -> ssm/design/source-registry
+> Preflight is all-or-nothing: any rejected row prevents runtime work for every row.
+> Accepted rows publish as one atomic batch; fetch/index/publication failure commits no subset and returns `not_committed` outcomes for otherwise staged rows.
+> `remove` of an absent name is a successful `not_found` outcome, not a rejected row.
 ---
 [ssm/design/source-publication-boundary] Design the source publication boundary (planning)
 The approved reader model is a master publication pointer. It names one
@@ -431,29 +421,17 @@ fully valid store remains searchable.
 -> ssm/design/chunk-adapters
 -> ssm/design/source-lifecycle
 ---
-[ssm/design/source-diagnostics] Design actionable source-health diagnostics (notstarted)
-Given the source live-snapshot publication model, design Scout's canonical
-closed error discriminated union consumed by batch commands and public search.
-Each explicit variant is one settled error type; its discriminator fixes the
-required evidence and repair instruction for that type, carrying a source or
-store-component locator only when that variant needs one. There is no untyped
-catch-all error object. The validator returns the complete collection of error
-union values for every observed current-store failure ahead of zero indexed
-answers. A rejected proposed row retains every applicable error-union value
-while still having one row outcome. No error is hidden inside a generic
-freshness warning or parsed back from display text. Warnings are separately
-typed non-invalidating observations possible only while every current Scout-store
-invariant remains valid, such as stale but intact content or a failed private
-refresh attempt with a valid prior snapshot.
-Accept: the owner confirms the closed error-union variants for every settled
-error producer, the complete collection used for an invalid Scout store, and the
-typed warning payloads possible only while the store remains valid, on CLI,
-MCP, and public-search surfaces.
+[ssm/design/source-diagnostics] Design actionable source-health diagnostics (reviewing)
+Scout's canonical closed diagnostic code space extends the foundation codes unchanged. Source/materialization codes are `ORIGIN_INVALID`, `ORIGIN_NOT_FOUND`, `SOURCE_NAME_INVALID`, `SOURCE_ROW_INVALID`, `DESTINATION_DENIED`, `DESTINATION_RESOLUTION_FAILED`, `FETCH_CONNECT_FAILED`, `FETCH_REDIRECT_DENIED`, `FETCH_RESPONSE_LIMIT_EXCEEDED`, `FETCH_MIME_MISMATCH`, `FETCH_CHARSET_INVALID`, `FETCH_UTF8_INVALID`, and `MATERIALIZATION_FAILED`. Publication/store codes are `PUBLICATION_MISSING`, `PUBLICATION_MALFORMED`, `PUBLICATION_INTEGRITY_FAILED`, `INDEX_MISSING`, `INDEX_INTEGRITY_FAILED`, `SOURCE_BINDING_FAILED`, and `LEGACY_MIGRATION_REQUIRED`. Each code has exactly `{code,evidence,repair}` and code-specific evidence keys in the implementation registry. Warnings are separate typed values: `SNAPSHOT_STALE` and `REFRESH_FAILED`; they are allowed only when the current publication validates. No error path returns an untyped catch-all or parses display text back into state.
+Accept: every source, materialization, publication, and store failure producer maps to one listed diagnostic code with required evidence/repair; an invalid store returns the complete collection unchanged; valid-store warnings remain typed and non-invalidating.
 -> ssm/design/attempt-diagnostics
 -> ssm/design/foundation-diagnostics
 -> ssm/design/remote-destination-admission
 -> ssm/design/source-hit-provenance
 -> ssm/design/source-lifecycle
+> Foundation codes remain unchanged; the listed source/materialization/publication codes complete the v1 closed diagnostic space.
+> Every diagnostic serializes exactly `{code,evidence,repair}` with code-specific evidence keys.
+> `SNAPSHOT_STALE` and `REFRESH_FAILED` are the only v1 warnings and are visible only for a valid current publication.
 ---
 [ssm/design/fetch-admission] Design remote fetch admission and resource policy (planning)
 Given the source descriptor-to-artifact contract, decide the rules enforced
