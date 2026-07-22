@@ -9,3 +9,6 @@ vscode-docs/
 
 # Semantic search index is rebuildable from the sources via search.py.
 .index/
+
+# Source-management artifacts are generation-qualified local materializations.
+scout-source--*/

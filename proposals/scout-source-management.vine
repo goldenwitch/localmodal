@@ -87,7 +87,7 @@ windows, since a task is already the natural retrievable unit.
 > An invalid current store blocks normal additions and removals until it is restored from its self-described failure report.
 @guidance text/markdown scout-vocabulary.md
 ---
-[ssm/design/source-artifact-contract] Design source descriptor-to-artifact contract (planning)
+[ssm/design/source-artifact-contract] Design source descriptor-to-artifact contract (reviewing)
 The physical sources.json ledger is generic; every caller enters through the
 single access boundary designed in ssm/design/ledger-access-boundary. This
 contract governs every source registered through Scout's source-management
@@ -433,7 +433,7 @@ Accept: every source, materialization, publication, and store failure producer m
 > Every diagnostic serializes exactly `{code,evidence,repair}` with code-specific evidence keys.
 > `SNAPSHOT_STALE` and `REFRESH_FAILED` are the only v1 warnings and are visible only for a valid current publication.
 ---
-[ssm/design/fetch-admission] Design remote fetch admission and resource policy (planning)
+[ssm/design/fetch-admission] Design remote fetch admission and resource policy (reviewing)
 Given the source descriptor-to-artifact contract, decide the rules enforced
 before Scout fetches a caller-supplied remote origin. HTTPS is the only
 accepted scheme. Redirects are limited to five and every target must retain
@@ -468,7 +468,7 @@ that was not reached.
 > One shared bounded staging writer enforces the configured response-byte limit, then removes incomplete staging on failure.
 > The initial generic remote profile is 60 seconds per request and 80 MiB per response.
 ---
-[ssm/design/https-single-url-materialization] Define one-URL HTTPS materialization (planning)
+[ssm/design/https-single-url-materialization] Define one-URL HTTPS materialization (reviewing)
 Each caller-provided URL is independently materialized as exactly one Scout
 source. The generic HTTPS fetcher may follow only the admitted redirect chain,
 then stages the final response as one artifact and emits its manifest. It does
@@ -483,7 +483,7 @@ every registered HTTPS source.
 > Redirect handling is transport for that one URL, not source expansion.
 > No catalog parsing, link discovery, crawl, or vendor-specific collection rule exists.
 ---
-[ssm/design/mime-representation] Design MIME-to-indexable representation (planning)
+[ssm/design/mime-representation] Design MIME-to-indexable representation (reviewing)
 Each source declares and validates a response MIME, but a successful fetch must
 also have one settled route into the indexed chunk pipeline. The initial allowed
 set is `text/plain` and `text/markdown`, with an absent charset interpreted as

@@ -359,6 +359,136 @@ def test_ledger() -> bool:
     return ok
 
 
+def test_materializer() -> bool:
+    print("source materializer:")
+    import socket
+    import tempfile
+    from pathlib import Path
+
+    config = _resource_module("config")
+    materializer_module = _resource_module("materializer")
+    model = _resource_module("source_model")
+    fixture_config = config.ScoutConfig(
+        schema_version=1,
+        ledger=config.LedgerConfig(lock_wait_seconds=1, lock_poll_milliseconds=10),
+        fetch=config.FetchConfig(request_timeout_seconds=1, max_redirects=2, max_response_bytes=1024),
+    )
+
+    class FakeResponse:
+        def __init__(self, status: int, data: bytes, headers: dict[str, str]) -> None:
+            self.status = status
+            self._data = data
+            self._headers = headers
+            self._offset = 0
+
+        def getheader(self, name: str):
+            return self._headers.get(name)
+
+        def read(self, size: int = -1) -> bytes:
+            if size < 0:
+                size = len(self._data)
+            chunk = self._data[self._offset:self._offset + size]
+            self._offset += len(chunk)
+            return chunk
+
+        def close(self) -> None:
+            pass
+
+    class FakeConnection:
+        def __init__(self, response: FakeResponse) -> None:
+            self.response = response
+            self.requested = None
+
+        def request(self, method: str, target: str, headers: dict[str, str]) -> None:
+            self.requested = (method, target, headers)
+
+        def getresponse(self) -> FakeResponse:
+            return self.response
+
+    def global_resolver(host: str, port: int, **_kwargs):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", port))]
+
+    def mixed_resolver(host: str, port: int, **_kwargs):
+        return [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", port)),
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", port)),
+        ]
+
+    def code_for(call) -> str | None:
+        try:
+            call()
+        except materializer_module.ScoutDiagnosticsError as exc:
+            return exc.diagnostics[0].code.value
+        return None
+
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temporary:
+        root = Path(temporary)
+        repository = root / "repo"
+        repository.mkdir()
+        (repository / "fixture.md").write_text("fixture source", encoding="utf-8")
+        local = materializer_module.Materializer(root, repository, fixture_config, resolver=global_resolver)
+        local_declaration = model.parse_declaration(
+            {
+                "name": "local-fixture",
+                "origin": {"kind": "repo-file", "path": "fixture.md"},
+                "mime": "text/markdown",
+                "ttl_days": None,
+            }
+        )
+        candidate = local.materialize(local_declaration)
+        ok = _check(
+            "repo file stages privately",
+            candidate.content_path.exists()
+            and candidate.snapshot.origin_evidence == {"kind": "repo-file", "path": "fixture.md"},
+        )
+        committed = materializer_module.commit_candidate(candidate, root)
+        ok &= _check(
+            "candidate commits immutable artifact",
+            committed.exists() and committed.read_text(encoding="utf-8") == "fixture source",
+        )
+
+        denied = materializer_module.Materializer(root, repository, fixture_config, resolver=mixed_resolver)
+        ok &= _check(
+            "mixed DNS answer is denied",
+            code_for(lambda: denied.admit_destination("example.test", 443)) == "DESTINATION_DENIED",
+        )
+        ok &= _check(
+            "literal loopback is denied",
+            code_for(lambda: local.admit_destination("127.0.0.1", 443)) == "DESTINATION_DENIED",
+        )
+
+        observed_connections = []
+
+        def fake_connection(host: str, port: int, address: str, timeout: float, _context):
+            observed_connections.append((host, port, address, timeout))
+            return FakeConnection(
+                FakeResponse(200, b"remote fixture", {"Content-Type": "text/plain"})
+            )
+
+        remote = materializer_module.Materializer(
+            root,
+            repository,
+            fixture_config,
+            resolver=global_resolver,
+            connection_factory=fake_connection,
+        )
+        remote_declaration = model.parse_declaration(
+            {
+                "name": "remote-fixture",
+                "origin": {"kind": "https", "url": "https://example.test/fixture"},
+                "mime": "text/plain",
+                "ttl_days": 1,
+            }
+        )
+        remote_candidate = remote.materialize(remote_declaration)
+        ok &= _check(
+            "remote connection is pinned",
+            observed_connections == [("example.test", 443, "93.184.216.34", 1)]
+            and remote_candidate.snapshot.origin_evidence["address"] == "93.184.216.34",
+        )
+    return ok
+
+
 def _resource_module(name: str):
     import importlib.util as iu
     from pathlib import Path
@@ -786,7 +916,7 @@ def test_mcp() -> bool:
 
 
 def main() -> int:
-    results = [test_sanitize(), test_dpapi(), test_freshness(), test_config(), test_source_model(), test_ledger(), test_vine(),
+    results = [test_sanitize(), test_dpapi(), test_freshness(), test_config(), test_source_model(), test_ledger(), test_materializer(), test_vine(),
                test_index_metadata(), test_machine_output(), test_corpus()]
     if "--mcp" in sys.argv:
         results.append(test_mcp())
