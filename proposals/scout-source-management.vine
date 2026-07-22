@@ -16,6 +16,23 @@ already-registered source whose TTL has expired, replacing today's
 read-the-warning-then-copy-the-refresh-command manual loop. Neither command
 discovers or follows additional documentation URLs. Both commands need
 representation on the CLI and as an MCP tool.
+The docs store is self-describing and has exactly two states: valid when every
+declared invariant of its current publication and required checked-in
+configuration holds, or invalid otherwise. A complete validation pass either
+admits docs answers or returns every violated invariant and no docs answers. A
+failed private candidate or fetch attempt does not alter a valid current
+publication.
+Every observed validation error is an instance of Scout's canonical closed
+error discriminated union. Its discriminator selects the required evidence and
+repair instruction for that error type; the complete error collection is the
+self-describing repair response.
+Source rows are design-time proposals, not runtime mutations. Scout validates
+the complete ordered row list before fetch, intent, ledger write, or
+publication, and returns every failed row. The only public row operations are
+immutable-name `add`, a complete-declaration upsert, and target-only `remove`,
+which reports whether it removed a declaration or found none. While the current
+docs store is invalid, normal additions and removals are blocked until someone
+restores validity from the complete error collection.
 Vine graphs are workspace-authored planning artifacts scout never indexes
 today; add them as a first-class chunked corpus alongside spec/notes/
 proposals/docs, using structural (per-task) chunking rather than raw word
@@ -54,6 +71,12 @@ windows, since a task is already the natural retrievable unit.
 -> ssm/implement/source-control-plane
 -> ssm/implement/vine-indexing
 -> ssm/verify/source-management
+> Docs-store validity is binary: every current-publication and required checked-in configuration invariant validates, or docs answers are suppressed and the complete error collection is returned.
+> A failed private candidate or fetch attempt does not alter a valid current publication.
+> Every reported validation error is a value of the canonical closed error discriminated union; its discriminator selects the required evidence and repair instruction.
+> Source rows are fully validated before runtime work; every failed row is returned and reaches no fetch, staging, ledger, or publication path.
+> Public source rows are immutable-name `add` upserts and target-only `remove`; no public update or rename exists.
+> An invalid current docs store blocks normal additions and removals until it is restored from its self-described failure report.
 ---
 [ssm/design/source-artifact-contract] Design source descriptor-to-artifact contract (complete)
 The physical sources.json ledger is generic; every caller enters through the
@@ -116,7 +139,7 @@ protocol.
 > Intent storage is a sibling journal: sources.json is committed data; the journal is a pending update/remove instruction.
 > Every access locks and resolves a present journal before serving a caller; it deletes the journal only after applying its requested result.
 ---
-[ssm/design/source-registry] Design the source ledger and its CRUD operations (notstarted)
+[ssm/design/source-registry] Design the source ledger and its CRUD operations (started)
 Redefine the docs source registry as a single ledger -- sources.json's existing
 fetched-state role absorbs the registry too; there is no separate descriptor
 entity. Physical access to that generic ledger is settled by
@@ -128,38 +151,42 @@ in-progress fetch, or index-not-yet-published artifact is not a representable
 live source state. Freshness is derived from a committed snapshot's timestamp,
 not stored as a mutable source-state flag. HTTPS transport and the local chunk
 kind are separate concerns; there is no default protocol value in the declared
-row and no per-source fetch-strategy field. Callers operate on the ledger via CRUD: one call carries a
-batch of rows, each tagged add/update/remove. A mutation record distinguishes
-the existing source target from its desired declaration: an add supplies a
-desired origin URL, an origin-changing update needs both a target and a
-replacement declaration, and a remove names only its target. The owner decides
-the stable target identity, whether the declared name is that identity, and
-collision/rename rules. Each row identifies exactly one source and receives
-exactly one outcome record; no row discovers, creates, or fetches another
-source. A caller-provided desired origin URL remains one declaration, never a
-fan-out mechanism.
+row and no per-source fetch-strategy field. The declared `name` is immutable
+source identity. Callers submit an ordered proposed batch of `add` and `remove`
+rows. Before runtime work, validation interprets every row in order against a
+virtual registry, returns every failed row, and leaves virtual state unchanged
+for each rejected row. `add` carries a complete declaration: an absent name
+plans registration and an existing name plans declaration replacement plus an
+explicit re-fetch. `remove` names only its immutable target and reports either
+`removed` or `not_found`. There is no public `update` or rename. Each row
+identifies exactly one source and receives exactly one outcome record; no row
+discovers, creates, or fetches another source. A caller-provided desired origin
+URL remains one declaration, never a fan-out mechanism. The validator performs
+no fetch, staging, physical-ledger mutation, or publication. While the current
+docs store is invalid, normal proposal application is blocked; repair ownership
+belongs to the health and refetch designs. Pure preflight still runs while the
+store is invalid: its reply contains every failed row with every applicable
+error-union value, plus the complete store error collection, while rows
+otherwise accepted by preflight remain unapplied.
 ssm/design/batch-atomicity owns whether row mutations commit independently or
-as one batch. The ledger stays small by design -- every access reads and locks
-the whole file, no partial or indexed access.
-Add rows apply directly as source registration, not as a claim that their
-artifact has fetched or their index has published; ssm/design/source-lifecycle
-owns those later states. The generic ledger-access boundary applies its
-crash-safe two-step update/remove protocol: it durably records a mutation
-intent before resolving it through the publication boundary. Recovery never
-directly deletes or replaces a reader-visible source row: it completes the
-pending mutation through the same publication/removal transaction until the
-declaration, live snapshot, and docs index agree. An interruption leaves the
-intent behind, so the operation always completes on the next access instead of
-landing half-done.
+as one batch, including whether an otherwise valid subset may proceed after
+preflight returns failed rows. The ledger stays small by design -- every access
+reads and locks the whole file, no partial or indexed access. An accepted `add`
+plan may register a declaration, not claim that its artifact has fetched or its
+index has published; ssm/design/source-lifecycle owns those later states. The
+generic ledger-access boundary applies its crash-safe two-step protocol to
+declaration replacement and removal. Recovery never directly deletes or
+replaces a reader-visible source row: it completes the pending mutation through
+the same publication/removal transaction until the declaration, live snapshot,
+and docs index agree. An interruption leaves the intent behind, so the
+operation always completes on the next access instead of landing half-done.
 The durable intent needs a representation that stays readable and recoverable
 on every access; a raw append to a standalone JSON object cannot itself be
 that representation. The intent/recovery journal is separate from the live
 snapshot record and cannot point readers at a candidate. The settled generic
 ledger-access boundary owns all physical writer migration, locking, and
-recovery; this task consumes it to define docs records and mutations. Define
-source identity and batch semantics too: duplicate names, divergent same-name
-adds, stale re-adds, target/declaration distinction, and row-operation
-ordering; batch commit semantics belong only to ssm/design/batch-atomicity.
+recovery; this task consumes it to define docs records and proposals. Batch
+commit semantics belong only to ssm/design/batch-atomicity.
 Deterministic mapping from that identity to an artifact path, including path
 collision and rename/move semantics, belongs only to
 ssm/design/source-artifact-path.
@@ -173,32 +200,34 @@ parser for user-facing warning strings.
 -> ssm/design/source-publication-boundary
 ---
 [ssm/design/source-artifact-path] Design source identity to artifact-path mapping (notstarted)
-Given the settled docs source identity and the `resources/<safe-name>` root
-constraint, decide the deterministic safe-name mapping, collision behavior,
-and path stability rules. Settle what happens to a committed artifact path when
-a source display name or origin changes, including publication, move, cleanup,
-and recovery behavior. The mapping must never let two source identities share
-one live artifact root or let an update/remove affect another source's artifact.
+Given immutable declared-name docs source identity and the
+`resources/<safe-name>` root constraint, decide the deterministic safe-name
+mapping, collision behavior, and path stability rules. Settle what happens to a
+committed artifact path when an `add` upsert replaces its origin or other
+declaration fields, including publication, cleanup, and recovery behavior. The
+mapping must never let two source identities share one live artifact root or
+let a replacement/removal affect another source's artifact.
 Accept: the owner confirms a total one-to-one identity-to-artifact-path mapping
-and an unambiguous rename/update/removal transition for committed snapshots.
+and an unambiguous add-upsert/removal transition for committed snapshots.
 -> ssm/design/source-artifact-contract
 -> ssm/design/source-registry
 ---
 [ssm/design/batch-atomicity] Design source batch commit semantics (notstarted)
 The caller invariant requires exactly one source row and one outcome record for
-every input URL; it does not itself decide whether a successful row may publish
-when another row in the same batch fails. Given the single-row publication
-boundary, the owner decides the batch commit and recovery contract for mixed
-add/update/remove requests, including outcome terminology for rows that did
-not commit and the relation between batch-level failure and per-row outcomes.
+every proposed row. Complete design-time validation returns every failed `add` or
+`remove` row before runtime work; it does not itself decide whether an otherwise
+valid subset may be applied. Given the single-row publication boundary, the
+owner decides the batch commit and recovery contract for accepted mixed add/
+remove plans, including outcome terminology for rows that did not commit and
+the relation between batch-level failure and per-row outcomes.
 The result must never report a row as committed when its declaration, snapshot,
 and docs-index membership did not cross the publication boundary together.
 Accept: the owner confirms one client-visible batch contract that preserves
-one outcome record per input URL and unambiguous recovery after interruption.
+one outcome record per proposed row and unambiguous recovery after interruption.
 -> ssm/design/source-publication-boundary
 -> ssm/design/source-registry
 ---
-[ssm/design/source-publication-boundary] Design the source publication boundary (complete)
+[ssm/design/source-publication-boundary] Design the source publication boundary (reviewing)
 The approved reader model is a docs-only master publication pointer. It names
 one immutable publication generation that binds the docs source-state snapshot,
 one live artifact generation or no snapshot per source, and the corresponding
@@ -210,11 +239,22 @@ visible until its old membership is absent. The ledger mutation journal may
 record a desired change, but replay must route through this boundary rather
 than directly replacing or deleting a reader-visible row.
 
+The current master publication and strict checked-in Scout configuration are
+the self-describing docs-store validity boundary. The manifest declares every
+reader-visible source state, artifact reference and digest, and docs-index
+generation and digest; configuration declares its own strict schema. The store
+is valid exactly when complete validation finds no violated declared invariant.
+Otherwise it is invalid: docs readers return no answers and the validator
+returns every violation. A failed fetch, staged candidate, or invalid candidate
+remains private to its originating attempt and does not invalidate an
+already-valid current publication.
+
 Candidate generations are immutable and unreachable until the master pointer
 changes. The initial cut retains prior complete generations conservatively;
 cleanup is not a publication prerequisite. A missing, malformed, or internally
-inconsistent master publication is control-plane-fatal rather than a reason to
-scan sibling artifacts or index generations for a plausible fallback.
+inconsistent master publication is an invalid-store validation result rather
+than a reason to scan sibling artifacts or index generations for a plausible
+fallback.
 
 The physical boundary is `resources/.docs-publications/`: `CURRENT` contains
 one opaque publication id, atomically replaced only after its immutable
@@ -236,8 +276,8 @@ staged source mutation onto the newer complete publication, builds the
 necessary next index generation outside the lock, and retries commit until it
 publishes. Rebase contention never discards a valid staged mutation; a process
 interruption leaves the ledger intent pending, and a later ledger access
-resumes the same rebase procedure. Only an invalid candidate artifact, index,
-or manifest is source/control-plane-fatal as applicable.
+resumes the same rebase procedure. An invalid candidate artifact, index, or
+manifest fails its private attempt and cannot become current.
 Accept: after an interruption at any point, a reader can resolve only the
 prior declaration with its prior snapshot and index membership, or the next
 complete set, never a new declaration with old results or a removed declaration
@@ -246,7 +286,9 @@ with retained results.
 > Docs readers resolve one master publication pointer, not raw sources.json, artifact roots, and docs index CURRENT independently.
 > One immutable publication generation binds the docs source-state snapshot, artifact generations, and docs-index generation.
 > Candidate generations are unreachable until publication; initial cleanup retains prior complete generations conservatively.
-> An invalid master publication is control-plane-fatal; readers never infer a fallback by scanning sibling generations.
+> The current master publication and strict checked-in configuration self-describe every docs-store validity invariant; validation accumulates every violation before docs answers are admitted or suppressed.
+> A violated current-publication invariant makes the whole docs store invalid and yields zero docs answers; an invalid private candidate leaves a valid current publication valid.
+> Readers never infer a fallback by scanning sibling generations.
 > A stale staged candidate automatically rebases its source mutation onto the latest complete publication before retrying the short commit.
 > `resources/.docs-publications/CURRENT` atomically names one immutable, self-contained generation manifest; it is the only docs reader entrypoint.
 > Publication rebase continues until commit; interruption preserves the ledger intent so a later access resumes rather than abandons the valid staged mutation.
@@ -263,8 +305,11 @@ sole docs-index writer and routes every docs publication, including recovery
 replay and initial index creation, through the source publication boundary.
 Define the corresponding sole docs-query health gate too: normal CLI, JSON
 CLI, and resident-worker/MCP routes must each resolve docs hits through the
-same provenance and health validation before ranking or output. No public
-docs-query path may return raw semantic or keyword hits around that gate.
+same complete current-publication validation before ranking or output. The gate
+accumulates every violated declared invariant. A valid result admits all docs
+hits to ranking; an invalid result returns no docs hits and the complete failure
+error collection. No public docs-query path may return raw semantic or keyword hits around
+that gate.
 Before legacy conversion, apply the settled pre-cutover bridge contract rather
 than silently treating aggregate legacy artifacts as source-bound snapshots.
 The implementation migration replaces rather than layers beside the current
@@ -276,11 +321,12 @@ Before cutover, initial docs availability may be established only by the
 settled immutable legacy compatibility publication; generic docs update,
 rebuild, and cold-build paths never rebuild mutable aggregate artifacts behind
 that bridge. The entrypoint returns its corpus-level compatibility/freshness
-metadata with every bridge reply and its migration repair action for rejected
-legacy writer calls.
+metadata only after the bridge validates; an invalid bridge returns no docs
+hits and its complete error collection. It returns its migration repair action
+for rejected legacy writer calls.
 Accept: the owner confirms direct CLI and internal-call behavior that makes an
-out-of-boundary docs publication or raw docs query architecturally unavailable
-or a fatal, actionable error.
+out-of-boundary docs publication or raw docs query architecturally unavailable,
+and makes whole-store validation the only gate before docs answers.
 -> ssm/design/legacy-docs-precutover
 -> ssm/design/mime-representation
 -> ssm/design/source-diagnostics
@@ -312,15 +358,14 @@ second transaction mechanism; every reader must observe either the prior
 complete publication or the next complete publication, never a cross-artifact
 mixture.
 Diagnostics are a read-time projection of this resolution, not a third stored
-source state: stale content or a failed refresh with a usable prior snapshot is
-a warning; no resolvable valid snapshot or failed snapshot-integrity validation
-is source-fatal and returns no result from that source; inability to validate
-the ledger, config, or publication boundary is control-plane-fatal and refuses
-docs-corpus results rather than presenting ungrounded material as healthy.
-Accept: the owner confirms a transition and diagnostic matrix in which reader
-resolution admits only the prior committed snapshot or no snapshot, never a
-partial, candidate, unindexed, or artifact/index-mismatched source. The
-downstream verification task proves that matrix under deterministic failures.
+source state. A stale but otherwise validating current publication, or a failed
+private refresh attempt that leaves its committed snapshot valid, may produce a
+warning. Any failure to validate a declared current-publication invariant makes
+the whole docs store invalid: it returns no docs answers and the complete
+failure report. A reader admits no partial, candidate, unindexed, or
+artifact/index-mismatched material; it either admits the fully validated
+current publication or no docs material. The downstream verification task proves
+that binary result under deterministic failures.
 -> ssm/design/fresh-source-refetch
 -> ssm/design/source-publication-boundary
 -> ssm/design/source-registry
@@ -341,42 +386,42 @@ attempt outcome without changing the visible snapshot prematurely.
 [ssm/design/source-hit-provenance] Design source-to-hit provenance and filtering (notstarted)
 Given the source publication lifecycle, define the stable binding carried by
 each docs-index chunk and search hit: source identity plus the committed
-snapshot generation or manifest identity that produced it. At read time,
-resolve that binding against the current publication boundary before a hit can
-be returned. A hit whose source is absent, whose generation is not current, or
-whose snapshot integrity cannot validate is excluded before ranking/output;
-the structured diagnostic then distinguishes source-fatal from
-control-plane-fatal. The owner decides the exact index metadata/id shape and
-reader validation path without weakening source-specific suppression in the
-shared docs corpus. That validation is invoked by every public docs-query
-entry point, including normal CLI, JSON CLI, and the resident worker used by
-MCP; no route may format or return unvalidated docs hits.
+snapshot generation or manifest identity that produced it. Before ranking, the
+whole-store validator resolves every required binding against the current
+publication boundary and accumulates all absent-source, stale-generation, and
+integrity failures. Any failure invalidates the docs store and returns no docs
+hits. The owner decides the exact index metadata/id shape and validation path
+without weakening this all-or-nothing gate. That validation is invoked by every
+public docs-query entry point, including normal CLI, JSON CLI, and the resident
+worker used by MCP; no route may format or return unvalidated docs hits.
 The binding occupies the canonical adapter tag envelope alongside `citation`;
 the query path hydrates those tags from the loaded index generation before
 filtering, ranking, or formatting. There is no second provenance sidecar or
 reader-time inference from index ids/artifact paths.
-Accept: an orphaned, stale-generation, or integrity-invalid fixture cannot
-appear in docs-search output, while a valid source in the same corpus remains
-searchable.
+Accept: one or more orphaned, stale-generation, or integrity-invalid fixtures
+yield zero docs-search hits and every corresponding validation failure, while a
+fully valid store remains searchable.
 -> ssm/design/chunk-adapters
 -> ssm/design/source-lifecycle
 ---
 [ssm/design/source-diagnostics] Design actionable source-health diagnostics (notstarted)
-Given the source live-snapshot publication model, design the structured
-diagnostic contract consumed by batch commands and docs search. The diagnostic
-is external to the source-state representation and contains at least severity,
-scope, stable error code, affected source when applicable, and a settled public
-repair action. FATAL diagnostics appear ahead of any response content and are
-never collapsed into a generic freshness warning or parsed back from display
-text. Source-fatal means the affected source cannot contribute results;
-control-plane-fatal means docs search refuses corpus results until integrity is
-re-established. WARN preserves results from a valid prior snapshot while
-showing a stale or failed-refresh condition and its repair action. A
-failed-refresh warning derives from the settled non-live attempt record, not a
-mutable snapshot-state flag.
-Accept: the owner confirms the public diagnostic payload and repair paths for
-source-fatal, control-plane-fatal, and warning conditions on CLI, MCP, and
-docs-search surfaces.
+Given the source live-snapshot publication model, design Scout's canonical
+closed error discriminated union consumed by batch commands and docs search.
+Each explicit variant is one settled error type; its discriminator fixes the
+required evidence and repair instruction for that type, carrying a source or
+store-component locator only when that variant needs one. There is no untyped
+catch-all error object. The validator returns the complete collection of error
+union values for every observed current-store failure ahead of zero docs
+answers. A rejected proposed row retains every applicable error-union value
+while still having one row outcome. No error is hidden inside a generic
+freshness warning or parsed back from display text. Warnings are separately
+typed non-invalidating observations possible only while every current docs-store
+invariant remains valid, such as stale but intact content or a failed private
+refresh attempt with a valid prior snapshot.
+Accept: the owner confirms the closed error-union variants for every settled
+error producer, the complete collection used for an invalid docs store, and the
+typed warning payloads possible only while the store remains valid, on CLI,
+MCP, and docs-search surfaces.
 -> ssm/design/attempt-diagnostics
 -> ssm/design/source-hit-provenance
 -> ssm/design/source-lifecycle
@@ -469,7 +514,7 @@ Code document before legacy fetchers or aggregate ledger rows are retired.
 -> ssm/design/source-publication-boundary
 -> ssm/design/source-registry
 ---
-[ssm/design/legacy-docs-precutover] Design legacy docs pre-cutover bridge (complete)
+[ssm/design/legacy-docs-precutover] Design legacy docs pre-cutover bridge (reviewing)
 Before the control plane owns generic docs entrypoints and before legacy
 migration converts aggregate pins, preserve the current pinned Modal and VS
 Code corpus as one bounded, read-only legacy compatibility publication. The
@@ -479,16 +524,18 @@ freshness state as compatibility metadata, not as source-bound snapshots. All
 direct docs CLI queries and resident-worker startup resolve that master pointer;
 there is no raw fallback scan or cold rebuild from mutable aggregate paths.
 
-The bridge labels every docs reply with a corpus-level legacy compatibility
-warning and any applicable aggregate freshness warning. It never claims that a
-hit has per-source/snapshot provenance. Once the bridge exists, legacy vendor
-fetch scripts and generic docs `--update`/`--rebuild` paths fail loudly with the
-settled migration repair action rather than mutate aggregate artifacts behind
-the published bridge. A missing or invalid bridge publication is
-control-plane-fatal. The first fully source-bound publication created by legacy
-migration atomically replaces the bridge; only then may bridge data and legacy
-writer paths be reclaimed. This task does not decide the eventual document
-coverage or migration disposition; ssm/design/legacy-docs-migration owns that.
+When the bridge validates, it labels its docs replies with a corpus-level legacy
+compatibility warning and any applicable aggregate freshness warning. It never
+claims that a hit has per-source/snapshot provenance. Once the bridge exists,
+legacy vendor fetch scripts and generic docs `--update`/`--rebuild` paths fail
+loudly with the settled migration repair action rather than mutate aggregate
+artifacts behind the published bridge. A missing or invalid bridge publication is
+an invalid docs-store result: it returns no docs answers and every failed
+declared bridge invariant. The first fully source-bound publication created by
+legacy migration atomically replaces the bridge; only then may bridge data and
+legacy writer paths be reclaimed. This task does not decide the eventual
+document coverage or migration disposition; ssm/design/legacy-docs-migration
+owns that.
 Accept: existing docs remain queryable only through an explicitly labeled
 master-published compatibility snapshot until cutover; no pre-cutover generic
 docs update, rebuild, cold build, or legacy fetch silently bypasses the sole
@@ -516,9 +563,9 @@ unprovenanced docs hit path remains.
 -> ssm/design/source-hit-provenance
 ---
 [ssm/design/fresh-source-refetch] Define direct fresh-source refetch behavior (notstarted)
-Given the settled source-operation identity, a fetch-bearing add or update
-targeting an existing source is an explicit re-fetch request even when its TTL
-has not expired. A remove is target-only and never fetches. That behavior
+Given the settled source-operation identity, an `add` targeting an existing
+source is an explicit re-fetch request even when its TTL has not expired. A
+remove is target-only and never fetches. That behavior
 belongs to the existing batch mutation command; it does not add a third public
 command. refresh-stale remains the unattended maintenance path and selects
 only stale or absent sources. A registered source with no live snapshot is
@@ -529,7 +576,7 @@ Accept: the owner confirms that a fetch-bearing direct mutation re-fetches a
 fresh source, a remove does not, and refresh-stale does not re-fetch fresh
 snapshots.
 -> ssm/design/source-registry
-> A fetch-bearing add or update targeting an existing source is re-fetched even when fresh.
+> An `add` targeting an existing source is re-fetched even when fresh.
 > refresh-stale remains stale/absent-only; no third public command is added.
 > A registered source with no live snapshot is absent and refresh-stale selects it.
 ---
@@ -683,30 +730,32 @@ generic 20-word minimum filter.
 ---
 [ssm/design/command-surface] Design the scout command surface (notstarted)
 Before any implementation starts, carefully design and encapsulate the two
-invocation surfaces: (1) a ledger CRUD command -- takes a batch of rows
-(add/update/remove), each row using the settled target-versus-desired
-declaration shape and naming its required MIME when it carries a declaration.
-It records mutation intent and drives the corresponding source publication or
-removal; it never exposes a declaration change before that publication boundary
-completes. The batch reports one outcome per operation and never derives
-further URLs; (2)
+invocation surfaces: (1) a source proposal command -- validates a complete
+ordered batch of immutable-name `add` declarations and target-only `remove`
+rows before runtime work, returning every failed row without fetch, intent,
+ledger, or publication side effects. Given the settled batch rule, it applies
+the accepted plan through corresponding source publication or removal; it never
+exposes a declaration change before that publication boundary completes. The
+batch reports one outcome per operation and never derives further URLs; (2)
 refresh all sources past their TTL -- no argument, scans and re-fetches only
 stale/missing entries, applying its own re-fetch results through the same
 publication path.
 Resolve the public-name/scope mismatch too: either add-source is the public
-name for the full batch CRUD command or the public name changes, so readers
-never have to infer whether update and remove are externally available.
+name for the full batch add/remove proposal command or the public name changes,
+so readers never have to infer unavailable operations.
 Each command needs its own representation on both the CLI and the MCP tool
 surface: exact argument shape, one settled outcome record per input row, and
 how both stay isolated from the ledger's internal locking/crash-safety
 mechanics in ssm/design/source-registry so those internals can change without
 changing either calling contract. Apply the
 settled fetch-admission, MIME-representation, and fresh-source-refetch
-policies plus the settled batch-atomicity contract: a caller-targeted fresh
-source re-fetches, while refresh-stale remains stale/absent-only. Row outcomes
-must name the lifecycle stage reached and carry the settled structured
-source-health diagnostic when one exists, not conceal a fetch, representation,
-ledger, index, or control-plane failure as an ordinary success.
+policies plus the settled batch-atomicity contract: an `add` targeting a fresh
+source re-fetches, while refresh-stale remains stale/absent-only. Normal
+proposal application is blocked while the docs store is invalid; the complete
+validation failure report names the repair path. Row outcomes must name the
+lifecycle stage reached and carry the settled structured diagnostic when one
+exists, not conceal a fetch, representation, ledger, index, or validation
+failure as an ordinary success.
 Accept: the owner confirms the settled two-command CLI + MCP contract before ssm/implement/add-source and ssm/implement/refresh-stale begin.
 -> ssm/design/batch-atomicity
 -> ssm/design/docs-index-entrypoints
@@ -777,16 +826,16 @@ duplicating concerns in a CLI or MCP wrapper. Respect the settled generic
 ledger-access boundary: no operation bypasses the authoritative writer/recovery
 protocol for the physical ledger. Construct a query-visible live snapshot only at
 complete publication; a staged candidate and an attempt failure must be
-unrepresentable as a corpus input or search result. Resolve source health at
-that boundary and emit the settled structured diagnostic rather than silently
-substituting an invalid snapshot or plain display text. Create, retain, and
-clear non-live fetch-attempt diagnostic records according to the settled
-attempt-diagnostics contract. At publication, bind every docs chunk to its
-source identity and committed snapshot generation or manifest identity; never
-publish unbound chunks into the shared docs corpus. Put that binding and the
-resolver citation in canonical adapter tags, and force a full docs rebuild when
-upgrading the prior text-only manifest schema so no published generation has
-partially missing tag metadata.
+unrepresentable as a corpus input or search result. Validate the whole current
+publication before any docs answer: when every declared invariant holds, serve
+ranked docs hits; otherwise return zero docs hits and the complete failure
+report. Create, retain, and clear non-live fetch-attempt diagnostics only when
+the current publication remains valid. At publication, bind every docs chunk to
+its source identity and committed snapshot generation or manifest identity;
+never publish unbound chunks into the shared docs corpus. Put that binding and
+the resolver citation in canonical adapter tags, and force a full docs rebuild
+when upgrading the prior text-only manifest schema so no published generation
+has partially missing tag metadata.
 This is the sole docs-index writer: every generic docs update/rebuild path in
 resources/search.py, including a missing-CURRENT cold build from direct CLI or
 resident-worker startup, delegates here or fails with the settled fatal repair
@@ -868,19 +917,19 @@ aggregate/fan-out path; and no legacy docs fetcher writes the ledger directly.
 -> ssm/implement/source-control-plane
 ---
 [ssm/implement/add-source] Implement the add-source command (notstarted)
-Build the settled public batch mutation command from
-ssm/implement/source-control-plane and ssm/design/command-surface: given a
-batch of rows using the settled target-versus-declaration shape (a MIME only
-when a row carries a declaration), invoke the settled lifecycle so add/update
-sources become searchable only at the contract's successful stage and target-
-only removes become unqueryable at their successful removal stage. A
-fetch-bearing caller-targeted existing source is re-fetched even when still
-fresh; the command reports that explicit fetch outcome rather than claiming a
-no-op. refresh-stale remains the separate stale-only maintenance path. Expose
-the command on both surfaces settled in ssm/design/command-surface: a CLI
-subcommand and an MCP tool. Existing vendor fetch scripts and their aggregate
-records are migrated separately; every new input URL uses the shared one-URL
-control-plane lifecycle.
+Build the settled public source proposal command from
+ssm/implement/source-control-plane and ssm/design/command-surface: validate a
+complete ordered batch of immutable-name `add` declarations and target-only
+`remove` rows before any runtime side effect, returning every failed row. Given
+the settled batch rule, invoke the lifecycle so accepted adds become searchable
+only at their successful publication stage and accepted removes become
+unqueryable at their successful removal stage. An `add` targeting an existing
+fresh source explicitly re-fetches it rather than claiming a no-op.
+refresh-stale remains the separate stale-only maintenance path. Expose the
+command on both surfaces settled in ssm/design/command-surface: a CLI subcommand
+and an MCP tool. Existing vendor fetch scripts and their aggregate records are
+migrated separately; every new input URL uses the shared one-URL control-plane
+lifecycle.
 -> ssm/design/command-surface
 -> ssm/implement/legacy-docs-migration
 -> ssm/implement/source-control-plane
@@ -914,29 +963,26 @@ onboarding instruction that requires a new bespoke vendor fetch script.
 -> ssm/implement/refresh-stale
 ---
 [ssm/implement/freshness-presentation] Implement docs health gate and freshness presentation (notstarted)
-Implement the shared docs-query health gate and presentation from the settled
-source-health diagnostic and legacy-docs query-cutover contract. Apply it to
-every public docs-query entry point: normal CLI, JSON CLI, and the resident
-worker used by MCP. Before cutover, render the settled corpus-level legacy
-compatibility/freshness metadata for bridge replies and never attach
-source/snapshot provenance to aggregate hits; after cutover, no legacy reader
-or unprovenanced hit reaches output. A warning with a usable prior snapshot
-remains visible ahead of the affected corpus results and carries the settled
-repair-action contract; later CLI/MCP command wrappers supply invocation, not
-the health gate's semantics. A source-fatal diagnostic appears ahead of the
-results and cannot allow hits from that source; a control-plane-fatal diagnostic
-refuses docs-corpus results rather than presenting ungrounded material as
-healthy. This task owns query gating, presentation, and search-worker wiring
+Implement the shared docs-query validation gate and presentation from the
+settled source-health diagnostic and legacy-docs query-cutover contract. Apply
+it to every public docs-query entry point: normal CLI, JSON CLI, and the
+resident worker used by MCP. Before cutover, validate the bridge before rendering
+its corpus-level compatibility/freshness metadata and never attach source/
+snapshot provenance to aggregate hits; after cutover, no legacy reader or
+unprovenanced hit reaches output. When the complete validator finds any failed
+current-store invariant, present every failure and return zero docs hits. A
+warning is visible only when the store remains valid and carries its repair
+action; later CLI/MCP command wrappers supply invocation, not the gate's
+semantics. This task owns query gating, presentation, and search-worker wiring
 only; it does not select stale sources or mutate the ledger. Before docs hits
-are ranked or formatted, resolve each post-cutover hit's settled source/snapshot
-binding: exclude source-fatal, orphaned, stale-generation, or integrity-invalid
-hits, while retaining valid hits from other sources in the same corpus.
-Accept: deterministic stale, failed-refresh-with-prior-snapshot, source-fatal,
-and control-plane-fatal fixtures each render the settled severity and repair
-path; orphaned, stale-generation, and integrity-invalid hits never reach
-output; bridge replies carry the corpus-level compatibility warning and no
-per-source provenance; no diagnostic exposes a legacy per-vendor refresh
-command.
+are ranked or formatted, validate every post-cutover source/snapshot binding in
+the current publication.
+Accept: deterministic stale and failed-private-refresh-with-valid-prior fixtures
+render warnings with docs hits; one or more invalid current-store fixtures
+render every failure with zero docs hits; bridge replies either carry the valid
+corpus-level compatibility warning and no per-source provenance, or return zero
+hits with their complete error collection; no diagnostic exposes a legacy
+per-vendor refresh command.
 -> ssm/design/command-surface
 -> ssm/design/docs-index-entrypoints
 -> ssm/design/legacy-docs-query-cutover
@@ -944,14 +990,15 @@ command.
 -> ssm/design/source-hit-provenance
 -> ssm/implement/source-control-plane
 ---
-[ssm/design/scout-config] Design where scout's own operational config lives (complete)
+[ssm/design/scout-config] Design where scout's own operational config lives (reviewing)
 Scout operational configuration lives in checked-in `resources/scout.json`,
 separate from the generic source data in `sources.json`. `resources/config.py`
 loads it once through a strict schema: a missing, malformed, unknown-key, or
-wrong-type configuration is control-plane-fatal rather than silently defaulted.
-The source control plane, search worker, and CLI/MCP wrappers consume the same
-parsed configuration; environment variables do not override these operational
-values.
+wrong-type configuration is a violated docs-store invariant rather than
+silently defaulted. The complete validator reports it with every other failure
+and returns no docs answers. The source control plane, search worker, and CLI/
+MCP wrappers consume the same parsed configuration; environment variables do
+not override these operational values.
 
 The initial schema is intentionally small: `schema_version: 1`; ledger
 `lock_wait_seconds: 30` and `lock_poll_milliseconds: 100`; fetch
@@ -962,8 +1009,8 @@ a retry repair action. Do not retry a completed/mid-flight mutation under a new
 operation: journal recovery completes pending update/remove work on the next
 ledger access. This config applies uniformly to every generic ledger client.
 Accept: one checked-in strict configuration source supplies all settled ledger
-access and fetch admission knobs; invalid config or exhausted lock wait fails
-loudly without an environment/hardcoded fallback.
+access and fetch admission knobs; invalid configuration joins the complete
+invalid-store failure report with no environment/hardcoded fallback.
 -> ssm/design/fetch-admission
 -> ssm/design/ledger-access-boundary
 > Config path: resources/scout.json; strict parser module: resources/config.py.
@@ -981,14 +1028,17 @@ expose the prior declaration with its prior committed snapshot when one exists,
 or no snapshot when none exists; it must never expose a candidate, partial
 artifact, unindexed artifact, artifact/index mismatch, new declaration with
 old results, or removed declaration with retained results.
-Stage two independent source updates from the same publication, let one publish
+Stage two independent source add-upserts from the same publication, let one publish
 first, and assert that the other automatically rebases and commits a later
 publication containing both source changes without re-fetching its already
 staged artifact.
 Also cover batch outcome reporting, direct fresh-source re-fetch behavior,
 refresh selection limited to stale or absent sources, and the
 generic HTTPS one-URL materialization path. Exercise a batch of $n$ fixture
-URLs and show exactly $n$ independent outcomes and no unrequested URL fetches.
+rows and show exactly $n$ independent outcomes and no unrequested URL fetches.
+Exercise a proposal containing multiple failed rows and assert the complete
+failed-row list returns before any fetch, staging, intent, ledger write, index
+construction, or publication; rejected rows leave no runtime trace.
 For every initial allowed MIME, exercise its settled representation through to
 searchable docs chunks; an unsupported MIME must fail with an actionable
 diagnostic before publication and contribute no docs hit. Apply the
@@ -1004,19 +1054,21 @@ Exercise the settled legacy docs query-cutover on both sides of its defined
 switch: retained aggregate data follows only the transition contract before
 cutover, and no aggregate reader or unprovenanced docs hit remains after it.
 Assert that the pre-cutover bridge is immutable and master-published, every
-bridge reply carries its corpus-level compatibility/freshness metadata, and
+validated bridge reply carries its corpus-level compatibility/freshness metadata,
+an invalid bridge returns zero docs hits with its complete error collection, and
 legacy fetchers or generic docs update/rebuild/cold-build calls fail with the
 migration repair action instead of mutating aggregate artifacts behind it.
 Exercise the owner-confirmed batch semantics with mixed success/failure rows
-and assert one outcome record per input URL plus no contradictory live
+and assert one outcome record per proposed row plus no contradictory live
 publication. Exercise concurrent independent ledger-client fixture operations
 through the settled boundary and assert that no direct writer bypasses recovery
 or races another ledger mutation.
 Exercise strict `resources/scout.json` loading: valid values reach every
-consumer, while missing/malformed/unknown-key/wrong-type config is
-control-plane-fatal and environment variables cannot override it. Hold a ledger
-fixture past the configured wait and assert `LEDGER_BUSY` with its retry action,
-without a duplicate mutation attempt.
+consumer, while missing/malformed/unknown-key/wrong-type configuration adds to
+the complete invalid-store failure report with zero docs hits and environment
+variables cannot override it. Hold a ledger fixture past the configured wait
+and assert `LEDGER_BUSY` with its retry action, without a duplicate mutation
+attempt.
 Exercise both CLI and MCP representations against the same control-plane result
 contract, including normal CLI, JSON CLI, and resident-worker/MCP docs queries.
 Assert that a direct generic docs update/rebuild either delegates through the
@@ -1027,12 +1079,15 @@ Deliberately make `.index/docs/CURRENT` disagree with the master publication
 and assert that no public docs query or writer follows it; verify a later docs
 publication retains each prior index/artifact generation referenced by a
 retained master publication rather than generic-cleaning it.
-Assert a warning when a failed refresh retains a valid prior snapshot, a
-source-fatal diagnostic plus no source hits when no valid snapshot can be
-resolved, and a control-plane-fatal diagnostic plus no docs-corpus hits when
-ledger, config, or publication integrity cannot be established. Assert that
-orphaned, stale-generation, and integrity-invalid hits are excluded before
-ranking, while valid hits from another source in the same docs corpus remain.
+Assert a warning when a failed private refresh retains a valid prior snapshot.
+For every malformed, missing, orphaned, stale-generation, or integrity-invalid
+current-store component, assert zero docs-corpus hits and the complete
+error collection before ranking; no valid-source hit in the same corpus
+may bypass an invalid store.
+Exercise an invalid current store together with multiple invalid proposed rows
+and assert pure preflight returns every row failure plus the complete store
+error collection, with no fetch, staging, intent, ledger, index, or publication
+side effect.
 Exercise the settled non-live attempt-record retention and clearing behavior
 across a failed refresh, later query, and later replacement attempt.
 Exercise an initial fetch failure followed by refresh-stale and assert that the
