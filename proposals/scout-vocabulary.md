@@ -25,6 +25,7 @@ explicit `add` row and receives one outcome.
 | --- | --- | --- |
 | **materialize** | Produce a staged candidate from one declared origin locator. | Publish, index, or make material query-visible. |
 | **fetch** | Remote materialization over the admitted remote transport. | The generic name for all materialization. |
+| **destination admission** | The remote policy that decides whether a resolved connection target may be used for one connection hop. | URL scheme or redirect-host checks alone. |
 | **re-fetch** | An explicit materialization requested by an `add` targeting an existing source. | A freshness no-op. |
 | **absent** | A registered source with no live snapshot. | An unregistered name or a missing declaration. |
 | **refresh-stale** | Select stale or absent registered sources, then materialize them through their lifecycle. | Source registration or fresh-source re-fetching. |
@@ -37,7 +38,8 @@ explicit `add` row and receives one outcome.
 
 The exact origin-locator and reconciliation contract belongs to
 `ssm/design/source-origin-locator`. Remote HTTPS admission belongs to
-`ssm/design/fetch-admission`.
+`ssm/design/fetch-admission`; resolved connection-target policy belongs to
+`ssm/design/remote-destination-admission`.
 
 ## Publication Terms
 
@@ -51,6 +53,7 @@ The exact origin-locator and reconciliation contract belongs to
 | **master pointer** | The one pointer selecting the current publication. | A route-specific index `CURRENT`. |
 | **current publication** | The immutable publication named by the master pointer. | The generic ledger or a plausible sibling generation. |
 | **Scout store** | The current publication together with required checked-in configuration, evaluated as one validity boundary. | A source category or a raw artifact collection. |
+| **recovery handoff** | Durable transition from a detected pending ledger intent to its one publication recovery operation. | Running remote or index work under the ledger lock, or independently replaying the same intent. |
 | **source control plane** | The sole source mutation, publication, and post-activation public-query path. | A wrapper around legacy reader output. |
 | **activation** | The one switch where the source control plane takes public-query ownership through the first source-bound publication. | A compatibility reader mode. |
 

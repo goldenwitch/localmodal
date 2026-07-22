@@ -46,10 +46,12 @@ windows, since a task is already the natural retrievable unit.
 -> ssm/design/fresh-source-refetch
 -> ssm/design/https-single-url-materialization
 -> ssm/design/ledger-access-boundary
+-> ssm/design/ledger-publication-recovery-handoff
 -> ssm/design/legacy-docs-migration
 -> ssm/design/legacy-docs-precutover
 -> ssm/design/legacy-docs-query-cutover
 -> ssm/design/mime-representation
+-> ssm/design/remote-destination-admission
 -> ssm/design/scout-config
 -> ssm/design/source-artifact-contract
 -> ssm/design/source-artifact-path
@@ -116,6 +118,7 @@ designs.
 Accept: the owner confirms how every registered source resolves to one artifact
 location, one current-publication membership, and one materialization-result
 shape.
+-> ssm/design/source-origin-locator
 > The fixed declared row is name, origin locator, mime, and ttl_days; mime is the expected media type.
 > Remote fetch admission accepts HTTPS origins only; transport is not encoded in mime and does not classify the source.
 > Every managed source materializes beneath resources/<safe-name> and participates in the current Scout publication; the safe-name mapping and path move semantics are settled by ssm/design/source-artifact-path.
@@ -124,35 +127,39 @@ shape.
 > Failure is separate from a staged candidate and a live snapshot.
 > Chunk kind is a separate local indexing concern and never reuses the source mime field.
 ---
-[ssm/design/ledger-access-boundary] Design authoritative ledger access boundary (complete)
+[ssm/design/ledger-access-boundary] Design authoritative ledger access boundary (planning)
 resources/sources.json is one generic source ledger. Every current and future
 caller uses the same authoritative physical-ledger access boundary; no source
-category has a separate writer, lock, journal, or recovery protocol. The owner
-has settled this operation-level contract: an add applies directly through the
-locked atomic-write path; an update or remove first durably records its intent,
-then atomically applies it; and every later ledger access completes a pending
-update/remove before serving the caller. The approved physical representation
-is a sibling intent journal beside sources.json: sources.json remains the last
-committed readable ledger, while the journal is the separately durable,
-recoverable pending update/remove instruction. Every access locks the pair,
-resolves a present journal before serving the caller, and deletes the journal
-only after the ledger reflects its requested result. This decision does not
-select batch commit semantics; the journal may carry the batch intent settled
-in ssm/design/batch-atomicity. This task also owns migration of current direct
-freshness.stamp-style writers onto that one API. It owns only generic
-persistence access, not each caller's source declaration or publication semantics.
+category has a separate writer, lock, journal, or recovery protocol. The generic
+persistence contract is: an add applies directly through the locked atomic-write
+path; an update or remove first durably records its intent; and every later
+ledger access detects a present journal before returning a ledger view that
+conflicts with it. The approved physical representation is a sibling intent
+journal beside sources.json: sources.json remains the last committed readable
+ledger, while the journal is the separately durable, recoverable pending
+update/remove instruction.
+
+Every access locks the pair only for ledger/journal read, write, and durable
+recovery-state transition. It never runs remote materialization, index
+construction, or publication rebase while that lock is held.
+ssm/design/ledger-publication-recovery-handoff owns the executor claim/handoff,
+non-owner behavior, and final replay/delete condition when a journal requires
+source publication. This task does not select batch commit semantics; the journal
+may carry the batch intent settled in ssm/design/batch-atomicity. It also owns
+migration of current direct freshness.stamp-style writers onto the one generic
+API, but not each caller's source declaration or publication semantics.
 Accept: the approved sibling-journal boundary gives all callers direct atomic
-add or replayable update/remove as appropriate, and no two independently
-implemented writers can mutate the physical ledger or bypass its recovery
-protocol.
+add and durable update/remove intent/claim primitives, no two independently
+implemented writers can mutate the physical ledger or bypass recovery, and no
+external work can hold the ledger lock.
 > sources.json remains one generic source ledger.
 > Every ledger writer uses one authoritative access and recovery boundary.
 > Adds apply directly through a locked atomic write.
-> Updates and removes durably record intent before atomic application; a later ledger access completes an interrupted operation.
+> Updates and removes durably record intent before atomic application; a later ledger access detects a pending journal and enters the settled recovery handoff before serving a conflicting view.
 > Intent storage is a sibling journal: sources.json is committed data; the journal is a pending update/remove instruction.
-> Every access locks and resolves a present journal before serving a caller; it deletes the journal only after applying its requested result.
+> The ledger lock covers only ledger/journal state transition; the recovery handoff owns external work and the final publication replay/delete condition.
 ---
-[ssm/design/source-registry] Design the source ledger and its CRUD operations (started)
+[ssm/design/source-registry] Design the source ledger and its CRUD operations (planning)
 Redefine the source registry as a single ledger -- sources.json's existing
 fetched-state role absorbs the registry too; there is no separate descriptor
 entity. Physical access to that generic ledger is settled by
@@ -187,19 +194,22 @@ preflight returns failed rows. The ledger stays small by design -- every access
 reads and locks the whole file, no partial or indexed access. An accepted `add`
 plan may register a declaration, not claim that its artifact has fetched or its
 index has published; ssm/design/source-lifecycle owns those later states. The
-generic ledger-access boundary applies its crash-safe two-step protocol to
-declaration replacement and removal. Recovery never directly deletes or
-replaces a reader-visible source row: it completes the pending mutation through
-the same publication/removal transaction until the declaration, live snapshot,
-and indexed-material membership agree. An interruption leaves the intent behind, so the
-operation always completes on the next access instead of landing half-done.
+generic ledger-access boundary applies its durable intent/claim primitives to
+declaration replacement and removal. The recovery handoff owns selection of one
+publication executor. Recovery never directly deletes or replaces a reader-
+visible source row: it enters the same publication/removal transaction until
+the declaration, live snapshot, and indexed-material membership agree. An
+interruption leaves the intent behind; a later access detects and claims or
+joins the settled handoff rather than serving a conflicting state or duplicating
+external work.
 The durable intent needs a representation that stays readable and recoverable
 on every access; a raw append to a standalone JSON object cannot itself be
 that representation. The intent/recovery journal is separate from the live
 snapshot record and cannot point readers at a candidate. The settled generic
-ledger-access boundary owns all physical writer migration, locking, and
-recovery; this task consumes it to define source records and proposals. Batch
-commit semantics belong only to ssm/design/batch-atomicity.
+ledger-access boundary owns physical writer migration, locking, and persistence
+primitives; the recovery handoff owns cross-boundary replay. This task consumes
+them to define source records and proposals. Batch commit semantics belong only
+to ssm/design/batch-atomicity.
 Deterministic mapping from that identity to an artifact path, including path
 collision and rename/move semantics, belongs only to
 ssm/design/source-artifact-path.
@@ -208,6 +218,7 @@ ledger access -- see ssm/design/scout-config. Freshness selection must be a
 structured result shared by refresh and warning presentation, not a refresh
 parser for user-facing warning strings.
 -> ssm/design/ledger-access-boundary
+-> ssm/design/ledger-publication-recovery-handoff
 -> ssm/design/scout-config
 -> ssm/design/source-artifact-contract
 -> ssm/design/source-publication-boundary
@@ -289,7 +300,7 @@ publication won first, the control plane automatically rebases the already-
 staged source mutation onto the newer complete publication, builds the
 necessary next index generation outside the lock, and retries commit until it
 publishes. Rebase contention never discards a valid staged mutation; a process
-interruption leaves the ledger intent pending, and a later ledger access
+interruption leaves the ledger intent pending, and the settled recovery handoff
 resumes the same rebase procedure. An invalid candidate artifact, index, or
 manifest fails its private attempt and cannot become current.
 Accept: after an interruption at any point, a reader can resolve only the
@@ -305,7 +316,7 @@ with retained results.
 > Readers never infer a fallback by scanning sibling generations.
 > A stale staged candidate automatically rebases its source mutation onto the latest complete publication before retrying the short commit.
 > `resources/.scout-publications/CURRENT` atomically names one immutable, self-contained generation manifest; it is the only public search reader entrypoint.
-> Publication rebase continues until commit; interruption preserves the ledger intent so a later access resumes rather than abandons the valid staged mutation.
+> Publication rebase continues until commit; interruption preserves the ledger intent so the settled recovery handoff resumes rather than abandons the valid staged mutation.
 ---
 [ssm/design/docs-index-entrypoints] Design the sole source-index entry point (notstarted)
 Given the source publication boundary, define the one permitted path through
@@ -437,10 +448,11 @@ error producer, the complete collection used for an invalid Scout store, and the
 typed warning payloads possible only while the store remains valid, on CLI,
 MCP, and public-search surfaces.
 -> ssm/design/attempt-diagnostics
+-> ssm/design/remote-destination-admission
 -> ssm/design/source-hit-provenance
 -> ssm/design/source-lifecycle
 ---
-[ssm/design/fetch-admission] Design remote fetch admission and resource policy (complete)
+[ssm/design/fetch-admission] Design remote fetch admission and resource policy (planning)
 Given the source descriptor-to-artifact contract, decide the rules enforced
 before Scout fetches a caller-supplied remote origin. HTTPS is the only
 accepted scheme. Redirects are limited to five and every target must retain
@@ -458,20 +470,24 @@ declared response length when available, counts streamed response bytes, and
 removes the incomplete staging area on a limit breach. Command-surface design
 only decides how callers supply a row and receive a rejected or failed outcome.
 The settled policy must be usable by the shared control plane for both CLI and
-MCP calls.
+MCP calls. Origin scheme and redirect-host policy do not by themselves admit an
+actual connection target; ssm/design/remote-destination-admission owns that
+separate policy, and this task consumes it for every remote connection hop.
 Accept: the owner confirms the admission and resource contract, including how
 each refused or exceeded limit is reported without claiming a lifecycle stage
 that was not reached.
 -> ssm/design/mime-representation
+-> ssm/design/remote-destination-admission
 -> ssm/design/source-artifact-contract
 > HTTPS is the only accepted origin scheme.
 > Follow at most five redirects only when every redirect target remains HTTPS and has the original host.
+> Destination admission is evaluated separately for every remote connection hop; scheme and original-host checks alone are insufficient.
 > Require matching declared/observed text/plain or text/markdown MIME and UTF-8 charset; reject a mismatch before candidate staging.
 > Scheme and MIME rules are fixed; request timeout, redirect count, and response-byte cap live in checked-in Scout config.
 > One shared bounded staging writer enforces the configured response-byte limit, then removes incomplete staging on failure.
 > The initial generic remote profile is 60 seconds per request and 80 MiB per response.
 ---
-[ssm/design/https-single-url-materialization] Define one-URL HTTPS materialization (complete)
+[ssm/design/https-single-url-materialization] Define one-URL HTTPS materialization (planning)
 Each caller-provided URL is independently materialized as exactly one Scout
 source. The generic HTTPS fetcher may follow only the admitted redirect chain,
 then stages the final response as one artifact and emits its manifest. It does
@@ -486,7 +502,7 @@ every registered HTTPS source.
 > Redirect handling is transport for that one URL, not source expansion.
 > No catalog parsing, link discovery, crawl, or vendor-specific collection rule exists.
 ---
-[ssm/design/mime-representation] Design MIME-to-indexable representation (complete)
+[ssm/design/mime-representation] Design MIME-to-indexable representation (planning)
 Each source declares and validates a response MIME, but a successful fetch must
 also have one settled route into the indexed chunk pipeline. The initial allowed
 set is `text/plain` and `text/markdown`, with an absent charset interpreted as
@@ -518,14 +534,16 @@ Modal or VS Code fan-out by inference.
 The owner decides the exact disposition of every currently indexed material item:
 represent a retained remote origin as one declared source, represent retained
 repository-local material through the same source contract, deliberately reduce
-coverage to explicitly named material, or retire it. For the chosen shape,
-define source names, origins, MIME values, artifact paths, snapshot/provenance
-migration, index rebuild, and removal of legacy aggregate records, fetch
-scripts, and direct-discovery bypasses. Do not let the implementation infer a
-catalog rule or a category exception merely to preserve today’s coverage.
-Accept: the owner confirms the exact disposition of every current source before
-its legacy writer, aggregate record, or direct-discovery bypass is retired.
--> ssm/design/docs-index-entrypoints
+coverage to explicitly named material, or retire it. This task produces the
+owner-confirmed retained declaration list and retirement list: source names,
+origin locators, required MIME values, and planned artifact mapping. It does
+not stage the initial publication, implement provenance/index construction, or
+define the public query gate; those downstream owners consume its disposition.
+Do not let the implementation infer a catalog rule or a category exception merely
+to preserve today’s coverage.
+Accept: the owner confirms the exact disposition and retained declaration list
+for every current source before its legacy writer, aggregate record, or direct-
+discovery bypass is retired.
 -> ssm/design/https-single-url-materialization
 -> ssm/design/mime-representation
 -> ssm/design/source-artifact-path
@@ -535,29 +553,35 @@ its legacy writer, aggregate record, or direct-discovery bypass is retired.
 -> ssm/design/source-registry
 ---
 [ssm/design/legacy-docs-precutover] Design source-bound initial publication (planning)
-Before any control-plane process takes public-query ownership, legacy migration
-privately stages one complete source-bound initial publication from the owner-
-confirmed retained declarations. Every retained legacy artifact is migration
-input only and is reconciled to an individual declared source; no aggregate
-compatibility publication or unprovenanced compatibility reply becomes reader-
-visible. The existing legacy runtime is the pre-activation program, not a
-control-plane reader or compatibility mode. No control-plane public route is
+
+After ssm/design/legacy-docs-migration produces the owner-confirmed retained
+declaration list, this task designs the private source-bound initial candidate.
+It consumes the source registry, publication boundary, provenance, diagnostics,
+and origin-locator contracts to bind every retained artifact to one source. No
+aggregate compatibility publication or unprovenanced compatibility reply becomes
+reader-visible. The existing legacy runtime is the pre-activation program, not
+a control-plane reader or compatibility mode. No control-plane public route is
 deployed until this candidate is complete. Activation replaces the legacy public
 reader with the master pointer as the first public source publication.
 
-The initial publication validates through the same manifest, source binding,
-diagnostic, and query-gate rules as every later refresh. A failed candidate is
-private and does not create a partial public source state. After the atomic
-cutover, legacy fetch scripts, direct-discovery paths, and generic
-`--update`/`--rebuild` paths fail loudly with the settled migration repair action
-rather than mutate indexed material outside the control plane. This task does
-not decide the eventual material coverage or migration disposition;
-ssm/design/legacy-docs-migration owns that.
+The initial candidate validates through the settled manifest, source-binding,
+and diagnostic contracts. This task does not decide retained coverage or the
+public query gate: migration owns the former, while
+ssm/design/docs-index-entrypoints consumes the candidate to define the latter.
+A failed candidate is private and does not create a partial public source state.
+After the atomic cutover, legacy fetch scripts, direct-discovery paths, and
+generic `--update`/`--rebuild` paths fail loudly with the settled migration
+repair action rather than mutate indexed material outside the control plane.
 Accept: the first master-published generation is fully source-bound; no public
 master generation or answer contains aggregate or unprovenanced legacy material;
 cutover adds no compatibility lifecycle beside the ordinary source publication
 lifecycle; and no deployed public route exposes both reader models.
+-> ssm/design/legacy-docs-migration
+-> ssm/design/source-diagnostics
+-> ssm/design/source-hit-provenance
 -> ssm/design/source-origin-locator
+-> ssm/design/source-publication-boundary
+-> ssm/design/source-registry
 > Stage a fully source-bound initial publication; do not publish an aggregate compatibility bridge.
 > Retained legacy artifacts are migration input only, never reader-visible source state.
 > The first fully source-bound publication activates the control-plane reader and replaces legacy public reader behavior without overlap.
@@ -605,6 +629,7 @@ Given the chunk-type-adapter interface from ssm/design/chunk-adapters, design VI
 Task citations are `<repo-relative-vine-path>#<task-id>#vine`, retaining an unambiguous file locator plus task id so a result can resolve through the settled repository-owned citation resolver even when VINE stems collide. This is the task resolver citation, not necessarily the unique index identity: long-task segments use distinct adapter index identities while sharing the one task citation. Ref blocks emit chunks as `<repo-relative-vine-path>#ref:<id>#vine`; their repository-owned resolution and test contract is designed in ssm/design/vine-citation-resolution rather than treating a ref proxy as a task. A ref chunk contains only its local proxy name and description. It never creates a source declaration, materializes a target, schedules target indexing, or derives target content. A referred VINE becomes indexable only through its own explicit source add row and materialization under ssm/design/source-origin-locator.
 -> ssm/design/chunk-adapters
 -> ssm/design/source-origin-locator
+-> ssm/design/vine-citation-resolution
 -> ssm/design/vine-task-length
 > Parse locally by splitting on a declared delimiter, or the default `---`, then recognizing task and ref headers; do not require a full VINE parser or live MCP call.
 > Emit each task segment with a unique adapter index identity and the shared task resolver citation `<repo-relative-vine-path>#<task-id>#vine`.
@@ -674,7 +699,6 @@ it directly rather than depending on VS Code MCP configuration.
 Accept: `python -m scout.smoke` exercises temporary task/ref VINE fixtures and
 proves every emitted citation resolves to its intended local block while each
 malformed or absent target fails explicitly.
--> ssm/design/vine-chunking
 > resources/vine.py owns the local structural parser and canonical citation resolver.
 > Canonical paths are normalized repo-relative .vine paths; task and ref targets are kind-specific.
 > The executable test invokes the local resolver directly, not vine_read or MCP.
@@ -856,6 +880,7 @@ deterministic fixture as exactly one source artifact through that same path.
 -> ssm/design/fresh-source-refetch
 -> ssm/design/https-single-url-materialization
 -> ssm/design/ledger-access-boundary
+-> ssm/design/ledger-publication-recovery-handoff
 -> ssm/design/legacy-docs-precutover
 -> ssm/design/mime-representation
 -> ssm/design/scout-config
@@ -884,6 +909,7 @@ through the one authoritative boundary before any public source mutation is
 exposed.
 -> ssm/design/batch-atomicity
 -> ssm/design/ledger-access-boundary
+-> ssm/design/ledger-publication-recovery-handoff
 -> ssm/design/scout-config
 -> ssm/design/source-registry
 ---
@@ -988,7 +1014,7 @@ command.
 -> ssm/design/source-hit-provenance
 -> ssm/implement/source-control-plane
 ---
-[ssm/design/scout-config] Design where scout's own operational config lives (reviewing)
+[ssm/design/scout-config] Design where scout's own operational config lives (planning)
 Scout operational configuration lives in checked-in `resources/scout.json`,
 separate from the generic source data in `sources.json`. `resources/config.py`
 loads it once through a strict schema: a missing, malformed, unknown-key, or
@@ -1004,13 +1030,18 @@ The initial schema is intentionally small: `schema_version: 1`; ledger
 `max_response_bytes: 83886080`. On lock contention, poll only until the
 configured wait expires, then return an explicit `LEDGER_BUSY` diagnostic with
 a retry repair action. Do not retry a completed/mid-flight mutation under a new
-operation: journal recovery completes pending update/remove work on the next
-ledger access. This config applies uniformly to every generic ledger client.
+operation: a later ledger access enters the settled recovery handoff for the
+pending update/remove. This config applies uniformly to every generic ledger
+client.
+ssm/design/remote-destination-admission decides whether destination admission
+adds strict checked-in fields; this task consumes that decision rather than
+leaving destination behavior to an environment override or hardcoded fallback.
 Accept: one checked-in strict configuration source supplies all settled ledger
 access and fetch admission knobs; invalid configuration joins the complete
 invalid-store failure report with no environment/hardcoded fallback.
 -> ssm/design/fetch-admission
 -> ssm/design/ledger-access-boundary
+-> ssm/design/remote-destination-admission
 > Config path: resources/scout.json; strict parser module: resources/config.py.
 > Initial ledger policy: 30-second wait, 100-millisecond poll, then LEDGER_BUSY with retry action.
 > Initial fetch policy: 60-second request timeout, 5 redirects, 80 MiB response cap.
@@ -1026,6 +1057,11 @@ expose the prior declaration with its prior committed snapshot when one exists,
 or no snapshot when none exists; it must never expose a candidate, partial
 artifact, unindexed artifact, artifact/index mismatch, new declaration with
 old results, or removed declaration with retained results.
+Hold a pending source-publication journal while a deterministic materialization
+or index fixture blocks, then invoke independent ledger clients. Assert that no
+client performs duplicate external work or receives a conflicting ledger view,
+and that claimant interruption leaves one recoverable handoff which reuses its
+staged candidate when recovery resumes.
 Stage two independent source add-upserts from the same publication, let one publish
 first, and assert that the other automatically rebases and commits a later
 publication containing both source changes without re-fetching its already
@@ -1045,6 +1081,10 @@ an aggregate, fan-out, category-specific, or direct-discovery path.
 Exercise valid UTF-8 `text/plain` and `text/markdown` responses, then reject a
 MIME mismatch, unsupported MIME, explicit non-UTF-8 charset, and invalid UTF-8
 bytes before candidate staging.
+Exercise the owner-confirmed remote destination policy with literal-address,
+resolved-address, redirect-hop, and DNS-change fixtures. Assert that every
+disallowed connection target is blocked before a connection and returns its
+canonical diagnostic, while an admitted fixture reaches ordinary materialization.
 Verify canonical chunk tags persist across saved/reloaded published index
 generations: public results display resolver citations rather than unique index
 ids, and chunk tags carry the source identity/snapshot binding used for filtering.
@@ -1096,6 +1136,8 @@ and refresh tools, so the existing exact MCP smoke contract evolves with the
 public surface rather than failing when those tools are added.
 Accept: the evidence records each scenario's observed lifecycle state and
 shows no command reports searchable success before the source is searchable.
+-> ssm/design/ledger-publication-recovery-handoff
+-> ssm/design/remote-destination-admission
 -> ssm/implement/add-source
 -> ssm/implement/freshness-presentation
 -> ssm/implement/ledger-access-boundary
@@ -1113,3 +1155,14 @@ Accept: the owner confirms one declaration and reconciliation contract through
 which every retained remote or repository-local origin reaches the same source
 lifecycle, and proves that no inventory or locator discovers declarations outside
 the public add/remove proposal contract.
+---
+[ssm/design/ledger-publication-recovery-handoff] Design ledger-publication recovery handoff (planning)
+A pending ledger intent may require source publication or rebase, but remote materialization and index construction cannot run under ledger or publication locks. Given the generic ledger boundary and source publication boundary, design the durable recovery handoff that turns a pending journal into one resumable publication operation without serving a conflicting ledger view. Settle the under-lock claim/ownership boundary, non-owner access result, crash/takeover behavior, staged-candidate reuse, and the condition for journal removal after ledger and publication agree.
+Accept: the owner confirms one recovery contract in which no remote or index work occurs under the ledger lock, no concurrent access independently replays the same intent, and interruption leaves a retryable handoff rather than a mixed reader-visible state.
+-> ssm/design/ledger-access-boundary
+-> ssm/design/source-publication-boundary
+---
+[ssm/design/remote-destination-admission] Design remote destination admission (planning)
+HTTPS scheme and original-host redirect constraints do not establish whether the actual connection target is admissible. Given a caller-supplied remote origin locator exposed through CLI and MCP, design destination admission for every connection and redirect hop: literal IP versus hostname input, resolution and actual-connection binding, DNS changes, address-scope policy, proxy behavior if any, typed diagnostics, and checked-in configuration ownership.
+Accept: the owner confirms one testable destination-admission contract that prevents unadmitted connection targets while preserving the settled one-origin-one-source boundary.
+-> ssm/design/source-origin-locator
