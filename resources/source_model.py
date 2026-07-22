@@ -112,13 +112,13 @@ def _valid_mime(value: object, path: str) -> str:
     return value
 
 
-def _valid_ttl(value: object) -> int | None:
+def _valid_ttl(value: object, path: str) -> int | None:
     if value is None:
         return None
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         raise _diagnostic_error(
             DiagnosticCode.SOURCE_ROW_INVALID,
-            row="ttl_days",
+            path=path,
             detail="must be null or a positive integer",
         )
     return value
@@ -174,7 +174,7 @@ def parse_declaration(value: object, path: str = "$") -> SourceDeclaration:
         name=_valid_name(payload["name"]),
         origin=parse_origin(payload["origin"], f"{path}.origin"),
         mime=_valid_mime(payload["mime"], f"{path}.mime"),
-        ttl_days=_valid_ttl(payload["ttl_days"]),
+        ttl_days=_valid_ttl(payload["ttl_days"], f"{path}.ttl_days"),
     )
 
 
@@ -305,3 +305,9 @@ def parse_row(value: object, row_index: int) -> SourceRow:
             raise _diagnostic_error(DiagnosticCode.SOURCE_ROW_INVALID, path=path, detail="remove must carry exactly op and name")
         return RemoveRow(name=_valid_name(value.get("name")))
     raise _diagnostic_error(DiagnosticCode.SOURCE_ROW_INVALID, path=path, detail="op must be add or remove")
+
+
+def row_to_json(row: SourceRow) -> dict[str, object]:
+    if isinstance(row, AddRow):
+        return {"op": "add", **declaration_to_json(row.declaration)}
+    return {"op": "remove", "name": row.name}

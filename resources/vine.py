@@ -342,3 +342,13 @@ def segments_for_vine(root: Path, path: Path) -> list[VineSegment]:
     for block in parse_vine(path):
         segments.extend(_segments(block, citation_for(root, path, block)))
     return segments
+
+
+def segments_for_citation_path(path: Path, citation_path: str) -> list[VineSegment]:
+    """Segment an artifact while preserving its declared repository citation path."""
+    encoded_path = quote(citation_path, safe="/.-_~")
+    segments: list[VineSegment] = []
+    for block in parse_vine(path):
+        target = block.block_id if block.kind == "task" else f"ref:{block.block_id}"
+        segments.extend(_segments(block, f"{encoded_path}#{target}#vine"))
+    return segments

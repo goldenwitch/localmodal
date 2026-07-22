@@ -489,6 +489,159 @@ def test_materializer() -> bool:
     return ok
 
 
+def test_publication() -> bool:
+    print("source publication:")
+    import tempfile
+    from pathlib import Path
+
+    config = _resource_module("config")
+    materializer_module = _resource_module("materializer")
+    model = _resource_module("source_model")
+    publication_module = _resource_module("publication")
+    source_index = _resource_module("source_index")
+    fixture_config = config.ScoutConfig(
+        schema_version=1,
+        ledger=config.LedgerConfig(lock_wait_seconds=1, lock_poll_milliseconds=10),
+        fetch=config.FetchConfig(request_timeout_seconds=1, max_redirects=0, max_response_bytes=1024),
+    )
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temporary:
+        root = Path(temporary)
+        repository = root / "repo"
+        repository.mkdir()
+        (repository / "fixture.md").write_text("publication fixture text", encoding="utf-8")
+        declaration = model.parse_declaration(
+            {
+                "name": "publication-fixture",
+                "origin": {"kind": "repo-file", "path": "fixture.md"},
+                "mime": "text/markdown",
+                "ttl_days": None,
+            }
+        )
+        materializer = materializer_module.Materializer(root, repository, fixture_config)
+        staged = materializer.materialize(declaration)
+        materializer_module.commit_candidate(staged, root)
+        record = model.SourceRecord(declaration=declaration, snapshot=staged.snapshot)
+        records = {declaration.name: record}
+        generation = source_index.build_generation(root, records)
+        store = publication_module.PublicationStore(root, fixture_config)
+        candidate = store.create_candidate(records, generation, parent_id=None)
+        ok = _check("publication candidate stays private", store.current_id() is None)
+        ok &= _check("master pointer activates candidate", store.activate(candidate, expected_parent=None))
+        loaded = store.validate_current()
+        ok &= _check(
+            "publication binds source and index",
+            loaded.records[declaration.name].snapshot.snapshot_id == staged.snapshot.snapshot_id
+            and loaded.index.generation_id == generation.generation_id,
+        )
+        stale = store.create_candidate(records, generation, parent_id=candidate.publication_id)
+        ok &= _check(
+            "stale publication cannot activate",
+            not store.activate(stale, expected_parent="different-parent"),
+        )
+        content = root / staged.snapshot.artifact_path
+        content.write_text("tampered", encoding="utf-8")
+        try:
+            store.validate_current()
+        except publication_module.ScoutDiagnosticsError as exc:
+            codes = {diagnostic.code.value for diagnostic in exc.diagnostics}
+        else:
+            codes = set()
+        ok &= _check("artifact integrity invalidates publication", codes == {"SOURCE_BINDING_FAILED"})
+    return ok
+
+
+def test_source_control() -> bool:
+    print("source control:")
+    import tempfile
+    from pathlib import Path
+
+    config = _resource_module("config")
+    control_module = _resource_module("source_control")
+    fixture_config = config.ScoutConfig(
+        schema_version=1,
+        ledger=config.LedgerConfig(lock_wait_seconds=1, lock_poll_milliseconds=10),
+        fetch=config.FetchConfig(request_timeout_seconds=1, max_redirects=0, max_response_bytes=1024),
+    )
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temporary:
+        root = Path(temporary)
+        repository = root / "repo"
+        repository.mkdir()
+        (repository / "first.md").write_text("first publication text", encoding="utf-8")
+        (repository / "second.md").write_text("second publication text", encoding="utf-8")
+        control = control_module.SourceControl(root, repository, fixture_config)
+        initial = control.bootstrap(
+            [
+                {
+                    "op": "add",
+                    "name": "first-source",
+                    "origin": {"kind": "repo-file", "path": "first.md"},
+                    "mime": "text/markdown",
+                    "ttl_days": None,
+                }
+            ]
+        )
+        ok = _check(
+            "bootstrap publishes one source",
+            initial.publication_id is not None and [outcome.status for outcome in initial.outcomes] == ["published"],
+        )
+        normal = control.propose(
+            [
+                {
+                    "op": "add",
+                    "name": "second-source",
+                    "origin": {"kind": "repo-file", "path": "second.md"},
+                    "mime": "text/markdown",
+                    "ttl_days": None,
+                },
+                {"op": "remove", "name": "absent-source"},
+            ]
+        )
+        ok &= _check(
+            "batch publishes and reports not-found remove",
+            [outcome.status for outcome in normal.outcomes] == ["published", "not_found"],
+        )
+        search = control.search("second publication")
+        ok &= _check(
+            "validated source search returns published hit",
+            bool(search["hits"]) and search["diagnostics"] == [],
+        )
+        before = control.publications.validate_current().publication_id
+        failure = control.propose(
+            [
+                {
+                    "op": "add",
+                    "name": "missing-source",
+                    "origin": {"kind": "repo-file", "path": "missing.md"},
+                    "mime": "text/markdown",
+                    "ttl_days": None,
+                },
+                {
+                    "op": "add",
+                    "name": "third-source",
+                    "origin": {"kind": "repo-file", "path": "second.md"},
+                    "mime": "text/markdown",
+                    "ttl_days": None,
+                },
+            ]
+        )
+        ok &= _check(
+            "failed batch has no partial publication",
+            [outcome.status for outcome in failure.outcomes] == ["failed", "not_committed"]
+            and control.publications.validate_current().publication_id == before,
+        )
+        rejected = control.propose(
+            [
+                {"op": "remove", "name": "first-source"},
+                {"op": "remove", "name": "first-source"},
+            ]
+        )
+        ok &= _check(
+            "invalid proposal has every row outcome",
+            [outcome.status for outcome in rejected.outcomes] == ["not_committed", "rejected"],
+        )
+    return ok
+
+
 def _resource_module(name: str):
     import importlib.util as iu
     from pathlib import Path
@@ -916,7 +1069,7 @@ def test_mcp() -> bool:
 
 
 def main() -> int:
-    results = [test_sanitize(), test_dpapi(), test_freshness(), test_config(), test_source_model(), test_ledger(), test_materializer(), test_vine(),
+    results = [test_sanitize(), test_dpapi(), test_freshness(), test_config(), test_source_model(), test_ledger(), test_materializer(), test_publication(), test_source_control(), test_vine(),
                test_index_metadata(), test_machine_output(), test_corpus()]
     if "--mcp" in sys.argv:
         results.append(test_mcp())

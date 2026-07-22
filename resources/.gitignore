@@ -12,3 +12,8 @@ vscode-docs/
 
 # Source-management artifacts are generation-qualified local materializations.
 scout-source--*/
+.scout-index/
+.scout-publications/
+sources.json.journal
+sources.json.lock
+sources.json.recovery.lock

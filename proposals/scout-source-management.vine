@@ -161,7 +161,7 @@ external work can hold the ledger lock.
 > Intent storage is a sibling journal: sources.json is committed data; the journal is a pending update/remove instruction.
 > The ledger lock covers only ledger/journal state transition; the recovery handoff owns external work and the final publication replay/delete condition.
 ---
-[ssm/design/source-registry] Design the source ledger and its CRUD operations (planning)
+[ssm/design/source-registry] Design the source ledger and its CRUD operations (reviewing)
 Redefine the source registry as a single ledger -- sources.json's existing
 fetched-state role absorbs the registry too; there is no separate descriptor
 entity. Physical access to that generic ledger is settled by
@@ -243,7 +243,7 @@ Accept: one client-visible batch result has exactly one outcome per input row; r
 > Accepted rows publish as one atomic batch; fetch/index/publication failure commits no subset and returns `not_committed` outcomes for otherwise staged rows.
 > `remove` of an absent name is a successful `not_found` outcome, not a rejected row.
 ---
-[ssm/design/source-publication-boundary] Design the source publication boundary (planning)
+[ssm/design/source-publication-boundary] Design the source publication boundary (reviewing)
 The approved reader model is a master publication pointer. It names one
 immutable publication generation that binds the Scout source-state snapshot,
 one live artifact generation or no snapshot per source, and the corresponding
@@ -300,6 +300,9 @@ prior declaration with its prior snapshot and index membership, or the next
 complete set, never a new declaration with old results or a removed declaration
 with retained results.
 -> ssm/design/source-artifact-contract
+> A v1 manifest is exactly `schema_version`, `publication_id`, `parent_id`, `sources`, and `index`; the source map carries full source records and the index reference carries generation id, relative path, SHA-256, and chunk count.
+> The unified index lives at `resources/.scout-index/generations/<id>` and has no reader `CURRENT`; the master publication is the sole reader pointer.
+> Candidate artifacts and index generations may exist privately before activation. The master pointer flips only after manifest, artifact digests, index digest, and source/snapshot bindings validate.
 > After source-control-plane activation, public search readers resolve one master publication pointer, not raw sources.json, artifact roots, and route-specific index CURRENT pointers independently.
 > One immutable publication generation binds the Scout source-state snapshot, artifact generations, and indexed-material generation.
 > Candidate generations are unreachable until publication; initial cleanup retains prior complete generations conservatively.
@@ -420,6 +423,8 @@ yield zero indexed hits and every corresponding validation failure, while a
 fully valid store remains searchable.
 -> ssm/design/chunk-adapters
 -> ssm/design/source-lifecycle
+> Every v1 index tag carries `citation`, `source`, and `snapshot`; VINE tags add `vine_kind` and `vine_segment` without a second provenance sidecar.
+> The reader validates the master publication, artifact digests, index digest, source map, and index manifest source/snapshot map before calling either semantic or keyword search.
 ---
 [ssm/design/source-diagnostics] Design actionable source-health diagnostics (reviewing)
 Scout's canonical closed diagnostic code space extends the foundation codes unchanged. Source/materialization codes are `ORIGIN_INVALID`, `ORIGIN_NOT_FOUND`, `SOURCE_NAME_INVALID`, `SOURCE_ROW_INVALID`, `DESTINATION_DENIED`, `DESTINATION_RESOLUTION_FAILED`, `FETCH_CONNECT_FAILED`, `FETCH_REDIRECT_DENIED`, `FETCH_RESPONSE_LIMIT_EXCEEDED`, `FETCH_MIME_MISMATCH`, `FETCH_CHARSET_INVALID`, `FETCH_UTF8_INVALID`, and `MATERIALIZATION_FAILED`. Publication/store codes are `PUBLICATION_MISSING`, `PUBLICATION_MALFORMED`, `PUBLICATION_INTEGRITY_FAILED`, `INDEX_MISSING`, `INDEX_INTEGRITY_FAILED`, `SOURCE_BINDING_FAILED`, and `LEGACY_MIGRATION_REQUIRED`. Each code has exactly `{code,evidence,repair}` and code-specific evidence keys in the implementation registry. Warnings are separate typed values: `SNAPSHOT_STALE` and `REFRESH_FAILED`; they are allowed only when the current publication validates. No error path returns an untyped catch-all or parses display text back into state.
@@ -802,7 +807,7 @@ ssm/design/vine-chunking is finalized against it.
 > txtai serialized tags are authoritative metadata; a generation's manifest tracks metadata-aware incremental signatures.
 > The default adapter preserves current word-window citations; VINE registers as vine-task.
 ---
-[ssm/implement/source-control-plane] Implement the shared source control plane (notstarted)
+[ssm/implement/source-control-plane] Implement the shared source control plane (started)
 Implement the settled config reader, source orchestration, structured
 freshness state, and artifact-to-index lifecycle behind one local control-plane
 interface. It consumes the authoritative shared ledger writer and recovery API
@@ -873,7 +878,7 @@ deterministic fixture as exactly one source artifact through that same path.
 -> ssm/design/source-registry
 -> ssm/implement/ledger-access-boundary
 ---
-[ssm/implement/ledger-access-boundary] Implement authoritative ledger access boundary (notstarted)
+[ssm/implement/ledger-access-boundary] Implement authoritative ledger access boundary (started)
 Implement `resources/config.py` and strict loading of `resources/scout.json`,
 then implement the settled physical-ledger writer, locking, durable
 intent/recovery protocol, and migration of every current direct
