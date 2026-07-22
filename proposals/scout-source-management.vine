@@ -43,6 +43,7 @@ windows, since a task is already the natural retrievable unit.
 -> ssm/design/command-surface
 -> ssm/design/docs-index-entrypoints
 -> ssm/design/fetch-admission
+-> ssm/design/foundation-diagnostics
 -> ssm/design/fresh-source-refetch
 -> ssm/design/https-single-url-materialization
 -> ssm/design/ledger-access-boundary
@@ -127,7 +128,7 @@ shape.
 > Failure is separate from a staged candidate and a live snapshot.
 > Chunk kind is a separate local indexing concern and never reuses the source mime field.
 ---
-[ssm/design/ledger-access-boundary] Design authoritative ledger access boundary (planning)
+[ssm/design/ledger-access-boundary] Design authoritative ledger access boundary (reviewing)
 resources/sources.json is one generic source ledger. Every current and future
 caller uses the same authoritative physical-ledger access boundary; no source
 category has a separate writer, lock, journal, or recovery protocol. The generic
@@ -152,6 +153,7 @@ Accept: the approved sibling-journal boundary gives all callers direct atomic
 add and durable update/remove intent/claim primitives, no two independently
 implemented writers can mutate the physical ledger or bypass recovery, and no
 external work can hold the ledger lock.
+-> ssm/design/foundation-diagnostics
 > sources.json remains one generic source ledger.
 > Every ledger writer uses one authoritative access and recovery boundary.
 > Adds apply directly through a locked atomic write.
@@ -448,6 +450,7 @@ error producer, the complete collection used for an invalid Scout store, and the
 typed warning payloads possible only while the store remains valid, on CLI,
 MCP, and public-search surfaces.
 -> ssm/design/attempt-diagnostics
+-> ssm/design/foundation-diagnostics
 -> ssm/design/remote-destination-admission
 -> ssm/design/source-hit-provenance
 -> ssm/design/source-lifecycle
@@ -908,6 +911,7 @@ preserve the settled ledger invariants, and every physical-ledger writer routes
 through the one authoritative boundary before any public source mutation is
 exposed.
 -> ssm/design/batch-atomicity
+-> ssm/design/foundation-diagnostics
 -> ssm/design/ledger-access-boundary
 -> ssm/design/ledger-publication-recovery-handoff
 -> ssm/design/scout-config
@@ -1014,38 +1018,20 @@ command.
 -> ssm/design/source-hit-provenance
 -> ssm/implement/source-control-plane
 ---
-[ssm/design/scout-config] Design where scout's own operational config lives (planning)
-Scout operational configuration lives in checked-in `resources/scout.json`,
-separate from the generic source data in `sources.json`. `resources/config.py`
-loads it once through a strict schema: a missing, malformed, unknown-key, or
-wrong-type configuration is a violated Scout-store invariant rather than
-silently defaulted. The complete validator reports it with every other failure
-and returns no indexed answers. The source control plane, search worker, and CLI/
-MCP wrappers consume the same parsed configuration; environment variables do
-not override these operational values.
-
-The initial schema is intentionally small: `schema_version: 1`; ledger
-`lock_wait_seconds: 30` and `lock_poll_milliseconds: 100`; fetch
-`request_timeout_seconds: 60`, `max_redirects: 5`, and
-`max_response_bytes: 83886080`. On lock contention, poll only until the
-configured wait expires, then return an explicit `LEDGER_BUSY` diagnostic with
-a retry repair action. Do not retry a completed/mid-flight mutation under a new
-operation: a later ledger access enters the settled recovery handoff for the
-pending update/remove. This config applies uniformly to every generic ledger
-client.
-ssm/design/remote-destination-admission decides whether destination admission
-adds strict checked-in fields; this task consumes that decision rather than
-leaving destination behavior to an environment override or hardcoded fallback.
-Accept: one checked-in strict configuration source supplies all settled ledger
-access and fetch admission knobs; invalid configuration joins the complete
-invalid-store failure report with no environment/hardcoded fallback.
+[ssm/design/scout-config] Design where scout's own operational config lives (reviewing)
+Scout operational configuration lives in checked-in `resources/scout.json`, separate from generic source data in `sources.json`. Its exact v1 JSON object is:
+```
+{"schema_version":1,"ledger":{"lock_wait_seconds":30,"lock_poll_milliseconds":100},"fetch":{"request_timeout_seconds":60,"max_redirects":5,"max_response_bytes":83886080}}
+```
+The root keys are exactly `schema_version`, `ledger`, and `fetch`; `ledger` and `fetch` have exactly the displayed keys. Every numeric value is an integer rather than bool. `schema_version` is exactly 1; wait, poll, timeout, and response bytes are positive; redirects are nonnegative; and `lock_poll_milliseconds <= lock_wait_seconds * 1000`. Missing, malformed, unknown-key, wrong-type, and invalid-domain cases return the foundation typed diagnostics. The source control plane, search worker, and CLI/MCP wrappers consume the same parsed configuration; environment variables and proxy settings do not override it. Destination policy has no v1 config fields.
+Accept: config fixtures prove the exact nested shape and every rejection domain, return foundation diagnostics without defaults, and expose the parsed object unchanged to every consumer.
 -> ssm/design/fetch-admission
+-> ssm/design/foundation-diagnostics
 -> ssm/design/ledger-access-boundary
 -> ssm/design/remote-destination-admission
-> Config path: resources/scout.json; strict parser module: resources/config.py.
-> Initial ledger policy: 30-second wait, 100-millisecond poll, then LEDGER_BUSY with retry action.
-> Initial fetch policy: 60-second request timeout, 5 redirects, 80 MiB response cap.
-> No environment override or silent default for checked-in operational configuration.
+> V1 config shape is exactly `schema_version`, `ledger`, and `fetch` with the nested keys shown in the task description; unknown keys are rejected at every level.
+> Config numerics are integers not bool; wait/poll/timeout/bytes are positive, redirects are nonnegative, and poll is no greater than wait in milliseconds.
+> V1 destination policy has no config fields; configuration and proxy environment variables never override the checked-in object.
 ---
 [ssm/verify/source-management] Verify source-management failure and recovery behavior (notstarted)
 Exercise the settled contract with deterministic local fixtures rather than
@@ -1144,25 +1130,33 @@ shows no command reports searchable success before the source is searchable.
 -> ssm/implement/legacy-docs-migration
 -> ssm/implement/refresh-stale
 ---
-[ssm/design/source-origin-locator] Design unified source-origin locator and reconciliation (planning)
-One Scout source declaration must identify where its material comes from and how refresh observes that declared origin without creating source categories. Current indexed material includes admitted HTTPS origins and repository-local paths. Define the one origin-locator and reconciliation contract that gives every retained source an immutable identity, reproducible current snapshot, refresh observation, and removal behavior. A configured repository path or glob cannot itself bypass declaration, provenance, validation, or publication. Remote HTTPS admission remains a downstream policy; chunk adapters remain representation mechanics. This task does not choose which current material is retained.
-Reconciliation consumes explicit declared source rows: it validates and
-materializes a row's one locator, but never creates a row or fans one row out
-into multiple sources. Inventory globs are migration/audit input only, used to
-compare the owner-confirmed declaration list with existing material. This task
-does not choose which current material is retained.
-Accept: the owner confirms one declaration and reconciliation contract through
-which every retained remote or repository-local origin reaches the same source
-lifecycle, and proves that no inventory or locator discovers declarations outside
-the public add/remove proposal contract.
+[ssm/design/source-origin-locator] Design unified source-origin locator and reconciliation (reviewing)
+One Scout source declaration carries an `origin` object with exactly one of two v1 shapes: `{"kind":"https","url":"https://..."}` or `{"kind":"repo-file","path":"relative/posix/path"}`. `https` has exactly `kind` and `url`; URL parsing rejects credentials, fragments, non-HTTPS schemes, absent hosts, and noncanonical textual forms. `repo-file` has exactly `kind` and `path`; its path is normalized repo-relative POSIX syntax, has no absolute/drive/traversal component, resolves beneath the repository root without a symlink/reparse escape, and names one regular file. A source declaration never carries a glob. `ttl_days` is either null for immutable material or a positive integer. Reconciliation consumes one explicit row and materializes only that locator; inventory globs remain migration/audit input and never create rows or fan out.
+Accept: strict parser fixtures accept only the two shapes, reject locator ambiguity/escape/discovery, and show that each accepted locator materializes one reproducible source snapshot.
+> V1 origin locators are structured objects: `https` with `url`, or `repo-file` with repo-relative `path`; unknown keys and kinds are rejected.
+> `repo-file` resolves one regular file beneath the repository root after symlink/reparse resolution; globbing remains audit-only.
+> `ttl_days` is null for immutable material or a positive integer; reconciliation consumes one explicit declaration and never discovers declarations.
 ---
-[ssm/design/ledger-publication-recovery-handoff] Design ledger-publication recovery handoff (planning)
-A pending ledger intent may require source publication or rebase, but remote materialization and index construction cannot run under ledger or publication locks. Given the generic ledger boundary and source publication boundary, design the durable recovery handoff that turns a pending journal into one resumable publication operation without serving a conflicting ledger view. Settle the under-lock claim/ownership boundary, non-owner access result, crash/takeover behavior, staged-candidate reuse, and the condition for journal removal after ledger and publication agree.
-Accept: the owner confirms one recovery contract in which no remote or index work occurs under the ledger lock, no concurrent access independently replays the same intent, and interruption leaves a retryable handoff rather than a mixed reader-visible state.
+[ssm/design/ledger-publication-recovery-handoff] Design ledger-publication recovery handoff (reviewing)
+The generic ledger keeps one sibling journal and one generic executor lock at `sources.json.recovery.lock`. A caller detecting a journal first acquires the recovery executor lock under the configured wait/poll policy, then under the short ledger lock claims the journal by its immutable `operation_id` and records a durable phase. The executor lock, not the ledger lock, remains held while materialization, candidate persistence, index construction, and publication rebase run. A non-owner waits for journal disappearance or returns `LEDGER_BUSY`; it never serves a ledger view that conflicts with the journal. OS release of the executor lock after process death permits the next claimant to validate/reuse a persisted candidate manifest or rematerialize it if invalid. The journal records operation id, desired mutation, phase, candidate reference/digest when staged, and base/current publication identity. Publication is committed under the short publication lock; only after the master publication reflects the desired source state does the executor apply the ledger mutation and delete the journal under the short ledger lock. A claimant validates operation id/phase before every commit, fencing a stale claimant.
+Accept: deterministic concurrent/crash fixtures prove one executor performs external work, a crashed executor can be taken over with a valid staged candidate, stale claimants cannot commit, and journal deletion follows both publication and ledger agreement.
 -> ssm/design/ledger-access-boundary
 -> ssm/design/source-publication-boundary
+> A generic OS-held recovery executor lock serializes external recovery work; the ledger lock is never held across that work.
+> The journal persists immutable operation id, desired mutation, durable phase, candidate reference/digest, and publication identity; claim validation fences stale executors.
+> Publish first, then apply ledger state and delete the journal only after publication/ledger agreement; non-owners wait or receive `LEDGER_BUSY`.
 ---
-[ssm/design/remote-destination-admission] Design remote destination admission (planning)
-HTTPS scheme and original-host redirect constraints do not establish whether the actual connection target is admissible. Given a caller-supplied remote origin locator exposed through CLI and MCP, design destination admission for every connection and redirect hop: literal IP versus hostname input, resolution and actual-connection binding, DNS changes, address-scope policy, proxy behavior if any, typed diagnostics, and checked-in configuration ownership.
-Accept: the owner confirms one testable destination-admission contract that prevents unadmitted connection targets while preserving the settled one-origin-one-source boundary.
+[ssm/design/remote-destination-admission] Design remote destination admission (reviewing)
+V1 remote destination admission is fixed, not configurable: Scout ignores proxy configuration and connects only directly. For every origin and redirect hop, a literal IP is parsed directly and a hostname is resolved once using `getaddrinfo`; every resolved candidate address must be `ipaddress.is_global`. A resolution with no addresses or any non-global address is denied. The fetcher pins the TCP connection to one approved resolved address, uses the URL hostname for TLS SNI and the Host header, and repeats resolution/admission for every redirect hop. It never lets the HTTP stack re-resolve a hostname after admission. `DESTINATION_DENIED` evidence includes origin host, candidate address when present, and denial reason; `DESTINATION_RESOLUTION_FAILED` and `FETCH_CONNECT_FAILED` remain typed source diagnostics. No destination fields are added to v1 Scout config.
+Accept: deterministic fixtures prove literal/local, mixed-answer DNS, DNS-change, redirect-hop, and proxy-environment cases cannot connect to an unadmitted address, while an approved pinned address succeeds with hostname TLS.
 -> ssm/design/source-origin-locator
+> V1 uses no proxy and admits only globally routable resolved addresses; a mixed global/non-global resolution is denied.
+> Every connection is pinned to an admitted address while preserving original-host TLS SNI and Host header; each redirect hop re-resolves and revalidates.
+> Destination policy adds no v1 config fields; denied/resolution/connect outcomes use typed diagnostics.
+---
+[ssm/design/foundation-diagnostics] Design foundation diagnostics for config and ledger (reviewing)
+Foundation diagnostics are the typed bootstrap boundary for strict configuration and generic ledger access. Every diagnostic is a serializable value with exactly `code`, `evidence`, and `repair`; display rendering is not state. The initial closed foundation code set is `CONFIG_MISSING`, `CONFIG_MALFORMED`, `CONFIG_UNKNOWN_KEY`, `CONFIG_WRONG_TYPE`, `CONFIG_INVALID_VALUE`, `LEDGER_BUSY`, `LEDGER_MALFORMED`, `LEDGER_JOURNAL_MALFORMED`, and `LEDGER_RECOVERY_FAILED`. Each code fixes its evidence keys and repair instruction in the implementation registry. `ScoutDiagnosticsError` may transport one or more values internally, but no foundation path raises or returns an untyped string error. ssm/design/source-diagnostics extends this same code/payload boundary for source/publication variants; it does not translate foundation diagnostics.
+Accept: config and ledger code can return only the listed typed foundation diagnostics, and later public validation can aggregate those values unchanged with the completed source diagnostic union.
+> Foundation diagnostic payload is exactly `{code, evidence, repair}`; rendered text is derived only at CLI/MCP presentation.
+> Foundation codes are `CONFIG_MISSING`, `CONFIG_MALFORMED`, `CONFIG_UNKNOWN_KEY`, `CONFIG_WRONG_TYPE`, `CONFIG_INVALID_VALUE`, `LEDGER_BUSY`, `LEDGER_MALFORMED`, `LEDGER_JOURNAL_MALFORMED`, and `LEDGER_RECOVERY_FAILED`.
+> Foundation diagnostics flow unchanged into the eventual canonical source diagnostic union; no bootstrap string/error side channel exists.

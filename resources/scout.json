@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "ledger": {
+    "lock_wait_seconds": 30,
+    "lock_poll_milliseconds": 100
+  },
+  "fetch": {
+    "request_timeout_seconds": 60,
+    "max_redirects": 5,
+    "max_response_bytes": 83886080
+  }
+}
