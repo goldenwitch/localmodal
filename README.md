@@ -11,6 +11,8 @@ design truth.
   executor service spec: serving stack, always-on topology.
 - [localmodal.vine](localmodal.vine) — execution plan, open design gaps, and
   dated evidence; this is the plan truth.
-- [scout/](scout/) — MCP search server (workspace / papers / pinned vendor docs / grounded web) used to answer provenance questions during design. See its [README](scout/README.md).
-- [resources/](resources/) — pinned third-party sources (papers, Modal docs,
-  and VS Code docs), the freshness ledger, and Scout's semantic-search worker.
+- [scout/](scout/) — MCP search server over one source-bound publication plus
+  grounded web leads, used to answer provenance questions during design. See
+  its [README](scout/README.md).
+- [resources/](resources/) — Scout's explicit initial-source manifest,
+  source-state ledger, materializer, publication store, and search workers.

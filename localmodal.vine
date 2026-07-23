@@ -5,6 +5,10 @@ title: Modal Qwen trial in VS Code Chat
 [lm] Decide whether Modal-hosted Qwen merits continuation (planning)
 The destination is an owner decision grounded in direct use, not a production platform.
 Complete when the owner has enough observed use to decide whether this stops here or informs later Coven work.
+Scout is developed in place with Localmodal as its preview customer. The
+research workflows in this plan are its proof of utility; once the owner judges
+those workflows satisfactory, extraction of Scout into its own repository and
+tooling is greenlit as a later owner decision.
 -> lm/trial
 > Scope ends at an owner usage decision in VS Code; generic agent infrastructure, evaluation platforms, and Coven integration are later owner decisions.
 > Human-owned specification remains design authority. This VINE owns execution order, open gaps, and dated evidence.
@@ -101,7 +105,7 @@ Accept: every promised limit is measured and every always-on cost has an explici
 -> lm/bakeoff/report
 -> lm/research/modal-runtime
 ---
-[lm/research/modal-runtime] Resolve Modal runtime controls (reviewing)
+[lm/research/modal-runtime] Resolve Modal runtime controls (complete)
 Collect current first-party behavior and pricing for candidate GPUs, Volumes, web serving, concurrency, autoscaling, deployment, and shutdown.
 Known 2026-07-17: Modal lists gpu=RTX-PRO-6000; NVIDIA specifies 96 GB GDDR7; Modal listed $0.000842/s. Values must be refreshed when the cell is admitted.
 Known 2026-07-19 (GPU multi-count gap): Modal's GPU guide sentence enumerating multi-GPU counts ("B300, B200, H200, H100, A100, L4, T4, L40S support up to 8 GPUs... A10 supports up to 4 GPUs") does NOT name RTX-PRO-6000 at all, in both the live page and local mirror. NVIDIA's own RTX PRO 6000 Blackwell Server Edition product page (specs table) also states no multi-GPU-per-node or NVLink/NVSwitch figure -- only single-GPU specs (96 GB GDDR7, 512-bit bus, 1597 GB/s bandwidth) plus Multi-Instance GPU (MIG, up to 4 isolated instances WITHIN one GPU, not multi-GPU scaling). No source documents a multi-GPU count for RTX-PRO-6000 as of 2026-07-19; must be confirmed via a Modal trial or Modal support.
@@ -162,7 +166,7 @@ Accept: each admitted cell has a falsifiable load hypothesis, bounded cost, and 
 -> lm/research/model-footprint
 > The base model identity is fixed by the owner as Qwen/Qwen3-Next-80B-A3B-Instruct. Quantized artifact revisions, GPU count, and GPU type remain bakeoff cells.
 ---
-[lm/research/model-footprint] Resolve model footprint and artifact candidates (reviewing)
+[lm/research/model-footprint] Resolve model footprint and artifact candidates (started)
 Measure repository bytes and dtype counts, calculate memory floors, resolve exact revisions, and identify first-party versus community quantizations.
 Known 2026-07-17: official FP8 revision c5f5f263bdd5cc134092897864e8905d8fe7b928 has 82,051,854,384 safetensor bytes (76.417 GiB): 80,636,542,976 FP8, 688,319,744 BF16, and 4,921,664 F32 parameters. This is a storage floor, not measured runtime VRAM. Qwen publishes BF16 and FP8; a one-GPU 4-bit artifact is unresolved.
 Known 2026-07-19: four community 4-bit quantizations of Qwen3-Next-80B-A3B-Instruct exist, all verified via HF's /api/models/{repo} JSON metadata (ground truth, not inference):
@@ -182,7 +186,7 @@ Accept: each admitted surface has an end-to-end streaming and tool-result round-
 -> lm/research/vscode-contract
 > Owner decision 2026-07-18: target the latest Anthropic-compatible (Messages apiType) Custom Endpoint surface for the trial. Chat Completions and Responses are not admitted to the bakeoff unless a later gap requires them.
 ---
-[lm/research/vscode-contract] Resolve VS Code provider contract (reviewing)
+[lm/research/vscode-contract] Resolve VS Code provider contract (started)
 Extract the current Custom Endpoint request, streaming, tool-calling, credential, token-limit, and agent-mode requirements from pinned first-party docs and focused probes.
 Known 2026-07-17: VS Code Custom Endpoint offers Chat Completions, Responses, and Messages API types; agent mode requires tool calling; VS Code discovers and invokes MCP tools.
 Known 2026-07-19: The Custom Endpoint provider (vendor: customendpoint, replaces the deprecated "OpenAI Compatible" provider) selects apiType per model: chat-completions | responses | messages, configured in a chatLanguageModels.json file. Per-model fields: id (model id sent to API), name (picker display name), url (full endpoint URL), apiType (optional per-model override of provider default), toolCalling (bool -- required true for the model to appear in the picker at all, and mandatory for agent mode), vision (bool), maxInputTokens + maxOutputTokens (sum defines the context window shown in UI), editTools (optional array: find-replace/multi-find-replace/apply-patch/code-rewrite), thinking (bool), streaming (bool, default true), zeroDataRetentionEnabled (bool -- when true, suppresses previous_response_id in Responses-API requests), supportsReasoningEffort (array of levels, e.g. minimal/low/medium/high -- enables a Thinking Effort picker), reasoningEffortFormat (chat-completions sends top-level reasoning_effort string; responses sends nested reasoning.effort object), requestHeaders (extra HTTP headers; reserved/forbidden headers ignored). Provider-level fields: vendor, name (group display), apiKey, apiType (default), models[].
@@ -193,7 +197,7 @@ Report: exact fields and observed wire behavior for each candidate API type.
 @guidance text/html https://code.visualstudio.com/docs/agent-customization/language-models
 @guidance text/html https://code.visualstudio.com/docs/agent-customization/mcp-servers
 ---
-[lm/research/engines] Resolve admissible serving engines (reviewing)
+[lm/research/engines] Resolve admissible serving engines (started)
 Build a first-party support matrix for the exact Qwen3-Next architecture and artifact candidates across vLLM, SGLang, TensorRT-LLM, and any challenger that passes all gates.
 Known 2026-07-17: vLLM's Qwen3-Next recipe uses TP4, prefix caching, and Hermes tool parsing; Qwen's official SGLang command also uses TP4. Neither is a selection or proof that one 96 GB GPU cannot work.
 Known 2026-07-19: TensorRT-LLM's PyTorch-backend "Model-Feature Support Matrix (Key Models)" lists Qwen3NextForCausalLM as a supported row, but this pass did not capture the table's column headers, so the row's Yes/No/Untested values cannot yet be mapped to named features -- gap remains. A footnote on that table flags relatively low accuracy for Qwen3-Next-80B-A3B on the SciCode-AA-v2 benchmark specifically. TensorRT-LLM's separate hardware support-matrix page (reference/support-matrix.html) lists only GPU architecture families (GB200 NVL72, Blackwell, Grace Hopper Superchip, Hopper, Ada Lovelace, Ampere) -- no per-SKU "RTX Pro 6000 SE" entry was found. A prior web-search claim that TensorRT-LLM's docs "explicitly list the RTX Pro 6000 SE" in a hardware matrix is NOT corroborated by direct fetch of that page and should be treated as unconfirmed pending further check.

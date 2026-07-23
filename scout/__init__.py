@@ -1,10 +1,13 @@
 """scout — MCP server exposing the repo's search surfaces to agents.
 
 Tools:
-  workspace_search  txtai index over our own writing (spec, notes, proposals)
-  papers_search     txtai index over the third-party papers (resources/pdf/)
-  docs_search       txtai index over pinned vendor docs (Modal and VS Code),
-                    freshness-stamped (date + TTL; stale pins scream in-results)
+  scout_search      validated search over the active source-bound publication
+  source_read       resolve a citation to its committed source snapshot or VINE block
+  source_propose    explicit ordered source add/remove batch
+  refresh_stale     re-materialize stale or absent registered sources
+  workspace_search, papers_search, docs_search
+                    compatibility aliases before activation; after activation
+                    they resolve scout_search rather than separate indexes
   web_search        Gemini + Google Search grounding; sanitized, delimited,
                     citations from grounding metadata
 

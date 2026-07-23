@@ -9,3 +9,19 @@ vscode-docs/
 
 # Semantic search index is rebuildable from the sources via search.py.
 .index/
+
+# Source-management artifacts are generation-qualified local materializations.
+# .scout-ledger.json is source-control runtime state; sources.json remains the
+# tracked pre-activation freshness ledger.
+scout-source--*/
+.scout-index/
+.scout-index-stage/
+.scout-publications/
+.scout-publications-stage/
+.scout-attempts/
+.scout-staging/
+.scout-transition.lock
+.scout-ledger.json
+.scout-ledger.json.journal
+.scout-ledger.json.lock
+.scout-ledger.json.recovery.lock

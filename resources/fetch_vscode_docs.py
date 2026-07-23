@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
-"""Pin the official VS Code language-model and MCP documentation locally.
+"""Pre-activation compatibility fetcher for the legacy VS Code mirror.
 
-The pinned Markdown feeds scout's docs corpus and carries the same freshness
-contract as the Modal docs mirror. The ledger is stamped only after every
-declared page is fetched successfully.
-
-Usage:
-    python resources/fetch_vscode_docs.py
+After `python resources/source_cli.py migrate` activates the source control
+plane, this command fails before mutating files. Use `source_propose` or
+`refresh_stale` instead.
 """
 from __future__ import annotations
 
@@ -43,8 +40,7 @@ ORIGIN = (
 USER_AGENT = "Mozilla/5.0 (compatible; localmodal-resource-fetch/1.0)"
 OUT_DIR = Path(__file__).resolve().parent / "vscode-docs"
 TTL_DAYS = 30
-REFRESH_CMD = ("python resources/fetch_vscode_docs.py, "
-               "then python resources/search.py --update")
+REFRESH_CMD = "python resources/source_cli.py refresh-stale"
 
 
 def _get(url: str) -> bytes:
@@ -54,6 +50,11 @@ def _get(url: str) -> bytes:
 
 
 def main() -> int:
+    try:
+        freshness.require_legacy_writer()
+    except RuntimeError as exc:
+        print(f"FATAL: {exc}", file=sys.stderr)
+        return 1
     if OUT_DIR.exists():
         shutil.rmtree(OUT_DIR)
 

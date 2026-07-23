@@ -4,9 +4,11 @@ Exposes the repo's search surfaces as agent tools over stdio MCP:
 
 | tool | surface | trust |
 |---|---|---|
-| `workspace_search` | local txtai index ([resources/search.py](../resources/search.py)) over **our own writing**: the human-owned spec, notes, proposals | our results; prefer it first, hits self-cite, read the file before building on it |
-| `papers_search` | local txtai index over the **third-party papers** (`resources/pdf/`) | the literature; hits self-cite as `paper#page#chunk` |
-| `docs_search` | local txtai index over the **pinned vendor docs**: Modal (`resources/modal-docs/`) and VS Code (`resources/vscode-docs/`) | pinned ground with a date + TTL; hits self-cite as `path#vendor#chunk`; a stale or absent pin screams at the top of its results |
+| `scout_search` | validated unified index over the active source-bound publication | all source bindings, artifact digests, and the referenced index generation validate before hits are ranked |
+| `source_read` | resolve a source or VINE citation against its committed snapshot | lets a caller inspect the exact material that produced a search hit |
+| `source_propose` | explicit ordered `add`/`remove` source batch | all rows preflight before runtime work; an accepted batch publishes atomically or not at all |
+| `refresh_stale` | stale/absent registered-source maintenance | re-materializes only selected existing sources through the same publication path |
+| `workspace_search`, `papers_search`, `docs_search` | legacy compatibility aliases | before activation they use routed legacy indexes; after activation they resolve `scout_search` |
 | `web_search` | Gemini + Google Search grounding | **untrusted leads** — sanitized, delimited, citations from grounding metadata |
 
 Registered in [.vscode/mcp.json](../.vscode/mcp.json); VS Code starts it on demand.
@@ -46,47 +48,63 @@ no guard-LLM arms race:
 The real guarantee sits outside this folder: irreversible actions in this repo
 go through a human gate regardless of what fetched text says.
 
-## Provenance rule
+## Source Onboarding
 
-`web_search` is steered to surface **verifiable handles explicitly** — a
-Hugging Face repo id, an arXiv id, a canonical docs URL — and that handle is
-the only part of its (untrusted) output worth trusting, because it's verified
-by being fetched/resolved, not by Gemini's say-so. The answer is a *lead*,
-never a citation. Turn a load-bearing paper lead into ground the same way
-every time:
+`web_search` is steered to surface **verifiable handles explicitly**: a Hugging
+Face repo id, an arXiv id, or a canonical docs URL. Its answer is a lead, never
+a citation. Resolve a load-bearing handle, then add one explicit source row.
 
-1. add `key: "arxiv:<id>"` to `PAPERS` in [fetch_papers.py](../resources/fetch_papers.py) and a row to [papers.md](../resources/papers.md);
-2. `python resources/fetch_papers.py` — PDF into `resources/pdf/`;
-3. `python resources/search.py --update` — incremental, embeds just the new PDF's chunks (`--rebuild` for a full re-embed);
-4. `papers_search` it — now it self-cites and is safe to build on.
+The first activation imports the checked-in explicit manifest:
 
-Hugging Face ids are verified by resolving the hub page. Take no one's word —
-including Gemini's.
+```powershell
+python resources/source_cli.py migrate
+```
 
-## Freshness ledger
+That privately stages every retained source, builds one unified index, and
+atomically activates the first master publication. The generated source ledger,
+artifacts, index generations, and master pointer are local runtime state.
+The runtime ledger is `resources/.scout-ledger.json`; the tracked
+`resources/sources.json` file remains pre-activation freshness metadata and is
+not rewritten by source control.
 
-Pinned sources are stamped in [resources/sources.json](../resources/sources.json)
-by the fetcher that pulls them: fetch date + TTL (`ttl_days: null` = immutable,
-like arXiv PDFs). Once a pin outlives its TTL — or its files go missing — every
-search reply from that corpus opens with a `!!` warning naming the source, the
-overdue days, and the exact refresh command. Consulting a rotten pin and seeing
-the rot are the same event; nothing goes quietly stale.
+After activation, use one of these paths:
 
-## Worker model (why the corpus tools never import txtai here)
+```powershell
+python resources/source_cli.py propose rows.json
+python resources/source_cli.py refresh-stale
+python resources/source_cli.py search "your query"
+```
+
+`rows.json` is an array of complete `add` rows or target-only `remove` rows.
+The canonical terms and exact payload boundaries live in
+[scout-vocabulary.md](../proposals/scout-vocabulary.md). Legacy vendor fetch
+scripts and `resources/search.py --update/--rebuild` reject activation rather
+than mutating material behind the master publication.
+
+A `repo-file` add may name only an exact normalized repository-relative path
+listed in `resources/scout.json` under `repo_files.publishable_paths`. Add a
+path there before proposing it; hidden paths, VCS metadata, traversal, and
+symlink/reparse escapes are rejected. `migrate` and `bootstrap` are private
+first-publication commands and reject once source control has activated.
+
+## Worker Model
 
 Loading OpenBLAS-backed DLLs inside a threaded async server deadlocks on the
 Windows loader lock (observed live: py-spy showed `LoadLibraryExW` wedged
 against anyio's stdio reader). So the server talks line-JSON to a
-resident worker (`resources/search.py --serve`) that loads both indexes at
-startup and **hot-swaps** the routed one to a new version whenever a rebuild
-publishes one. Each corpus is independent: `resources/.index/papers/` and
-`resources/.index/workspace/` each hold versioned `v<ns>/` dirs behind their
-own atomic `CURRENT` pointer, so rebuilds never fight the worker for an open
-file and a papers rebuild never disturbs the workspace index. The
-conversation has no timeouts: every pipe read returns a line
-or EOF, both handled. The worker exits on stdin EOF — its stdin is its
-lifeline — so a dead server cannot orphan a worker, even when hard-killed.
-Worker stderr is inherited, landing in the VS Code MCP log.
+source worker (`resources/source_worker.py`) that validates the master
+publication, then loads its referenced unified index generation. The master
+pointer under `resources/.scout-publications/CURRENT` is the only active reader
+truth after activation; the worker never follows route-specific index pointers.
+The sibling `ACTIVATED` marker is written before the first pointer flip and is
+one-way: if `CURRENT` is later missing or malformed, public routes return the
+source-store diagnostics rather than falling back to a legacy index.
+Legacy readers recheck that marker under the same transition barrier used by
+activation, and legacy fetch writers hold the barrier for their process; a
+cutover therefore waits for an in-flight compatibility operation rather than
+allowing a legacy mutation to cross the activation boundary.
+Its stdin is its lifeline, so a dead server cannot orphan it. Worker stderr is
+inherited and lands in the VS Code MCP log.
 
 ## Smoke tests
 

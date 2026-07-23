@@ -1,17 +1,9 @@
 #!/usr/bin/env python3
-"""Pin the Modal documentation locally: walk https://modal.com/llms.txt and
-mirror every linked .md page into resources/modal-docs/, then stamp the pin
-in the freshness ledger (date + TTL; see freshness.py). Consumers of the
-docs corpus are warned in-results once the pin outlives its TTL.
+"""Pre-activation compatibility fetcher for the legacy Modal mirror.
 
-The mirror feeds scout's docs corpus — pulled on demand by docs_search,
-never part of anyone's standing context. A re-run replaces the whole mirror
-(this is a pin, not a merge) and re-stamps the date. The ledger is stamped
-only on a zero-failure run, so a partial mirror keeps the previous pin's
-date and ages toward its scream instead of masquerading as fresh.
-
-Usage:
-    python resources/fetch_modal_docs.py
+After `python resources/source_cli.py migrate` activates the source control
+plane, this command fails before mutating files. Use `source_propose` or
+`refresh_stale` instead.
 """
 from __future__ import annotations
 
@@ -40,8 +32,7 @@ USER_AGENT = "Mozilla/5.0 (compatible; localmodal-resource-fetch/1.0)"
 OUT_DIR = Path(__file__).resolve().parent / "modal-docs"
 # Draft default: Modal's docs move steadily but not daily. Owner-tunable.
 TTL_DAYS = 30
-REFRESH_CMD = ("python resources/fetch_modal_docs.py, "
-               "then python resources/search.py --update")
+REFRESH_CMD = "python resources/source_cli.py refresh-stale"
 
 
 def _get(url: str) -> bytes:
@@ -51,6 +42,11 @@ def _get(url: str) -> bytes:
 
 
 def main() -> int:
+    try:
+        freshness.require_legacy_writer()
+    except RuntimeError as exc:
+        print(f"FATAL: {exc}", file=sys.stderr)
+        return 1
     index = _get(INDEX_URL).decode("utf-8", errors="replace")
     urls = list(dict.fromkeys(_MD_URL.findall(index)))  # dedup, order kept
     if not urls:
