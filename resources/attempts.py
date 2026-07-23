@@ -9,9 +9,9 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, Mapping
+from typing import Mapping
 
-from diagnostics import Diagnostic, Warning, WarningCode, warning
+from diagnostics import Warning, WarningCode, warning
 from durable import fsync_directory, replace as durable_replace, unlink as durable_unlink
 from source_model import SourceRecord
 
@@ -32,13 +32,6 @@ class AttemptStore:
 
     def __init__(self, resources_root: Path) -> None:
         self.root = resources_root / ".scout-attempts"
-
-    def record_refresh_failure(self, record: SourceRecord, diagnostics: Iterable[Diagnostic]) -> None:
-        snapshot = record.snapshot
-        if snapshot is None:
-            return
-        detail = "; ".join(item.code.value for item in diagnostics) or "materialization failed"
-        self.record_refresh_failure_detail(record.declaration.name, snapshot.snapshot_id, detail)
 
     def record_refresh_failure_detail(self, source: str, snapshot_id: str, detail: str) -> None:
         attempt = RefreshAttempt(

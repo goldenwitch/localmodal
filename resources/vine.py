@@ -286,12 +286,6 @@ def _tokenizer_settings() -> tuple[object, int]:
     return tokenizer, sequence_limit
 
 
-def effective_token_limit() -> int:
-    """The configured embedding limit including special tokens."""
-    _tokenizer, limit = _tokenizer_settings()
-    return limit
-
-
 def _encoded(tokenizer: object, text: str, specials: bool) -> list[int]:
     return tokenizer(text, add_special_tokens=specials, truncation=False, verbose=False)["input_ids"]
 

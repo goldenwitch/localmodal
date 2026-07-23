@@ -47,16 +47,6 @@ class StagedCandidate:
     staging_dir: Path
     content_path: Path
 
-    def journal_reference(self, resources_root: Path) -> dict[str, object]:
-        return {
-            "staging_path": self.staging_dir.relative_to(resources_root).as_posix(),
-            "snapshot": {
-                "snapshot_id": self.snapshot.snapshot_id,
-                "sha256": self.snapshot.sha256,
-                "byte_count": self.snapshot.byte_count,
-            },
-        }
-
 
 class _PinnedHTTPSConnection(http.client.HTTPSConnection):
     """HTTPS connection whose TCP peer is an already admitted literal address."""

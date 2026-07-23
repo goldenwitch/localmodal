@@ -365,30 +365,6 @@ def load_generation(path: Path) -> Embeddings | None:
     return embeddings
 
 
-def semantic_search(path: Path, query: str, k: int) -> list[dict[str, object]]:
-    """Search one validated generation and hydrate canonical tag metadata."""
-    embeddings = load_generation(path)
-    if embeddings is None:
-        return []
-    try:
-        return semantic_search_loaded(embeddings, query, k)
-    finally:
-        with __import__("contextlib").suppress(Exception):
-            embeddings.close()
-
-
-def keyword_search(path: Path, query: str, k: int) -> list[dict[str, object]]:
-    """Literal baseline over the same published source generation."""
-    embeddings = load_generation(path)
-    if embeddings is None:
-        return []
-    try:
-        return keyword_search_loaded(embeddings, query, k)
-    finally:
-        with __import__("contextlib").suppress(Exception):
-            embeddings.close()
-
-
 def semantic_search_loaded(embeddings: Embeddings | None, query: str, k: int) -> list[dict[str, object]]:
     if embeddings is None:
         return []

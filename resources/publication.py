@@ -369,13 +369,6 @@ class PublicationStore:
             (diagnostic(DiagnosticCode.PUBLICATION_MALFORMED, path=str(path), detail=detail),)
         )
 
-    def _integrity(self, publication: Publication, detail: str) -> None:
-        self._integrity_id(publication.publication_id, detail)
-
-    @staticmethod
-    def _integrity_id(publication_id: str, detail: str) -> None:
-        raise ScoutDiagnosticsError((PublicationStore._integrity_diagnostic(publication_id, detail),))
-
     @staticmethod
     def _integrity_diagnostic(publication_id: str, detail: str) -> Diagnostic:
         return diagnostic(
@@ -383,10 +376,6 @@ class PublicationStore:
             publication_id=publication_id,
             detail=detail,
         )
-
-    @staticmethod
-    def _binding(source: str, detail: str) -> None:
-        raise ScoutDiagnosticsError((PublicationStore._binding_diagnostic(source, detail),))
 
     @staticmethod
     def _binding_diagnostic(source: str, detail: str) -> Diagnostic:
@@ -431,14 +420,6 @@ def _text(value: object, name: str) -> str:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{name} must be nonempty text")
     return value
-
-
-def _relative_path(value: object) -> str:
-    path = _text(value, "index relative_path")
-    candidate = Path(path)
-    if candidate.is_absolute() or ".." in candidate.parts:
-        raise ValueError("index relative_path must be relative")
-    return path
 
 
 def _publication_id(value: object, name: str) -> str:
