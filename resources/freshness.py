@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
-"""Source freshness ledger (resources/sources.json).
+"""Pre-activation compatibility freshness ledger (resources/sources.json).
 
-Every pinned source set is stamped by the fetcher that pulls it:
-{corpus, origin, fetched, ttl_days, artifact, refresh}. ttl_days null =
-immutable (arXiv PDFs never change); a number = the pin goes STALE that many
-days after `fetched`. Staleness and missing artifacts SCREAM: the search
-worker attaches the warnings to every reply from the affected corpus, so
-consulting a rotten pin and seeing the rot are the same event. Each warning
-carries its own fix (the source's `refresh` command).
+After source-control activation the master publication and source ledger own
+freshness; direct compatibility writers fail before changing this file.
 """
 from __future__ import annotations
 
+import atexit
 import json
+from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
 
+from activation import TransitionLock, is_source_control_active, transition_lock
+
 ROOT = Path(__file__).parent
 LEDGER = ROOT / "sources.json"
+_WRITER_LOCK: TransitionLock | None = None
+
+
+def source_control_active() -> bool:
+    return is_source_control_active(ROOT)
 
 
 def load() -> dict:
@@ -29,6 +33,7 @@ def load() -> dict:
 def stamp(key: str, *, corpus: str, origin: str, ttl_days: int | None,
           artifact: str, refresh: str, files: int | None = None) -> None:
     """Record a completed fetch of source `key`, dated today."""
+    require_legacy_writer()
     entries = load()
     entry = {"corpus": corpus, "origin": origin,
              "fetched": date.today().isoformat(),
@@ -38,6 +43,48 @@ def stamp(key: str, *, corpus: str, origin: str, ttl_days: int | None,
     entries[key] = entry
     LEDGER.write_text(json.dumps(entries, indent=2, sort_keys=True) + "\n",
                       encoding="utf-8")
+
+
+def require_legacy_writer() -> None:
+    """Reject pre-control-plane writers after the master publication activates."""
+    global _WRITER_LOCK
+    if _WRITER_LOCK is None:
+        lock = transition_lock(ROOT)
+        lock.__enter__()
+        if source_control_active():
+            lock.__exit__(None, None, None)
+            raise RuntimeError(
+                "legacy source writer is disabled after activation; use "
+                "python resources/source_cli.py propose or refresh-stale"
+            )
+        _WRITER_LOCK = lock
+    elif source_control_active():
+        raise RuntimeError(
+            "legacy source writer is disabled after activation; use "
+            "python resources/source_cli.py propose or refresh-stale"
+        )
+
+
+def _release_writer_lock() -> None:
+    global _WRITER_LOCK
+    if _WRITER_LOCK is not None:
+        _WRITER_LOCK.__exit__(None, None, None)
+        _WRITER_LOCK = None
+
+
+atexit.register(_release_writer_lock)
+
+
+@contextmanager
+def legacy_reader_session():
+    """Serve one compatibility read only while the one-way cutover is absent."""
+    with transition_lock(ROOT):
+        if source_control_active():
+            raise RuntimeError(
+                "source control is active; use python resources/source_cli.py search, "
+                "propose, or refresh-stale instead of the legacy routed index."
+            )
+        yield
 
 
 def warnings_for(corpus: str, entries: dict | None = None,

@@ -39,6 +39,14 @@ class DiagnosticCode(StrEnum):
     INDEX_INTEGRITY_FAILED = "INDEX_INTEGRITY_FAILED"
     SOURCE_BINDING_FAILED = "SOURCE_BINDING_FAILED"
     LEGACY_MIGRATION_REQUIRED = "LEGACY_MIGRATION_REQUIRED"
+    BOOTSTRAP_AFTER_ACTIVATION = "BOOTSTRAP_AFTER_ACTIVATION"
+
+
+class WarningCode(StrEnum):
+    """Typed non-invalidating observations for a valid current publication."""
+
+    SNAPSHOT_STALE = "SNAPSHOT_STALE"
+    REFRESH_FAILED = "REFRESH_FAILED"
 
 
 _FOUNDATION_SPECS: dict[DiagnosticCode, tuple[tuple[str, ...], str]] = {
@@ -161,9 +169,24 @@ _SOURCE_SPECS: dict[DiagnosticCode, tuple[tuple[str, ...], str]] = {
         ("path",),
         "Run the source migration before using the source control plane.",
     ),
+    DiagnosticCode.BOOTSTRAP_AFTER_ACTIVATION: (
+        ("path",),
+        "Use source_cli.py propose or refresh-stale after source control has activated.",
+    ),
 }
 
 _DIAGNOSTIC_SPECS = {**_FOUNDATION_SPECS, **_SOURCE_SPECS}
+
+_WARNING_SPECS: dict[WarningCode, tuple[tuple[str, ...], str]] = {
+    WarningCode.SNAPSHOT_STALE: (
+        ("source", "snapshot", "ttl_days", "overdue_days"),
+        "Run refresh-stale to materialize a current snapshot.",
+    ),
+    WarningCode.REFRESH_FAILED: (
+        ("source", "snapshot", "detail"),
+        "Repair the declared origin and run refresh-stale again.",
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -171,6 +194,22 @@ class Diagnostic:
     """One serializable canonical diagnostic value."""
 
     code: DiagnosticCode
+    evidence: Mapping[str, object]
+    repair: str
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "code": self.code.value,
+            "evidence": dict(self.evidence),
+            "repair": self.repair,
+        }
+
+
+@dataclass(frozen=True)
+class Warning:
+    """One serializable non-invalidating source observation."""
+
+    code: WarningCode
     evidence: Mapping[str, object]
     repair: str
 
@@ -210,3 +249,16 @@ def foundation_diagnostic(code: DiagnosticCode, **evidence: object) -> Diagnosti
     if code not in _FOUNDATION_SPECS:
         raise ValueError(f"unsupported foundation diagnostic code: {code!r}")
     return diagnostic(code, **evidence)
+
+
+def warning(code: WarningCode, **evidence: object) -> Warning:
+    """Build one typed warning with its fixed evidence and repair contract."""
+    try:
+        expected_keys, repair = _WARNING_SPECS[code]
+    except KeyError as exc:
+        raise ValueError(f"unsupported warning code: {code!r}") from exc
+    if tuple(sorted(evidence)) != tuple(sorted(expected_keys)):
+        raise ValueError(
+            f"{code.value} evidence keys must be {expected_keys!r}, got {tuple(evidence)!r}"
+        )
+    return Warning(code=code, evidence=dict(evidence), repair=repair)

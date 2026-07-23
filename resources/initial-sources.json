@@ -1,0 +1,3212 @@
+{
+  "imports": {
+    "10": "resources/modal-docs/cli/latest/bootstrap.md",
+    "100": "resources/modal-docs/guide/cloud-bucket-mounts.md",
+    "101": "resources/modal-docs/guide/cold-start.md",
+    "102": "resources/modal-docs/guide/concurrent-inputs.md",
+    "103": "resources/modal-docs/guide/continuous-deployment.md",
+    "104": "resources/modal-docs/guide/cuda.md",
+    "105": "resources/modal-docs/guide/customer-supplied-encryption-keys.md",
+    "106": "resources/modal-docs/guide/datadog-integration.md",
+    "107": "resources/modal-docs/guide/dataset-ingestion.md",
+    "108": "resources/modal-docs/guide/developing-debugging.md",
+    "109": "resources/modal-docs/guide/dicts.md",
+    "11": "resources/modal-docs/cli/latest/changelog.md",
+    "110": "resources/modal-docs/guide/dynamic-batching.md",
+    "111": "resources/modal-docs/guide/dynamic-function-config.md",
+    "112": "resources/modal-docs/guide/endpoint-benchmarks.md",
+    "113": "resources/modal-docs/guide/endpoint-metrics.md",
+    "114": "resources/modal-docs/guide/endpoints.md",
+    "115": "resources/modal-docs/guide/environment_variables.md",
+    "116": "resources/modal-docs/guide/environments.md",
+    "117": "resources/modal-docs/guide/existing-images.md",
+    "118": "resources/modal-docs/guide/fast-pull-from-registry.md",
+    "119": "resources/modal-docs/guide/feature-maturity.md",
+    "12": "resources/modal-docs/cli/latest/config.md",
+    "120": "resources/modal-docs/guide/global-variables.md",
+    "121": "resources/modal-docs/guide/gpu-health.md",
+    "122": "resources/modal-docs/guide/gpu-metrics.md",
+    "123": "resources/modal-docs/guide/gpu.md",
+    "124": "resources/modal-docs/guide/high-performance-llm-inference.md",
+    "125": "resources/modal-docs/guide/images.md",
+    "126": "resources/modal-docs/guide/job-queue.md",
+    "127": "resources/modal-docs/guide/jupyter-notebooks.md",
+    "128": "resources/modal-docs/guide/lifecycle-functions.md",
+    "129": "resources/modal-docs/guide/local-data.md",
+    "13": "resources/modal-docs/cli/latest/container.md",
+    "130": "resources/modal-docs/guide/managing-deployments.md",
+    "131": "resources/modal-docs/guide/memory-snapshots.md",
+    "132": "resources/modal-docs/guide/modal-1-0-migration.md",
+    "133": "resources/modal-docs/guide/modal-user-account-setup.md",
+    "134": "resources/modal-docs/guide/model-weights.md",
+    "135": "resources/modal-docs/guide/multi-node-training.md",
+    "136": "resources/modal-docs/guide/named-images.md",
+    "137": "resources/modal-docs/guide/oidc-integration.md",
+    "138": "resources/modal-docs/guide/okta-sso.md",
+    "139": "resources/modal-docs/guide/otel-integration.md",
+    "14": "resources/modal-docs/cli/latest/curl.md",
+    "140": "resources/modal-docs/guide/parametrized-functions.md",
+    "141": "resources/modal-docs/guide/preemption.md",
+    "142": "resources/modal-docs/guide/private-networking.md",
+    "143": "resources/modal-docs/guide/project-structure.md",
+    "144": "resources/modal-docs/guide/proxy-ips.md",
+    "145": "resources/modal-docs/guide/queues.md",
+    "146": "resources/modal-docs/guide/rbac.md",
+    "147": "resources/modal-docs/guide/region-selection.md",
+    "148": "resources/modal-docs/guide/resources.md",
+    "149": "resources/modal-docs/guide/restricted-access.md",
+    "15": "resources/modal-docs/cli/latest/dashboard.md",
+    "150": "resources/modal-docs/guide/retries.md",
+    "151": "resources/modal-docs/guide/s3-gateway-endpoints.md",
+    "152": "resources/modal-docs/guide/saml-sso.md",
+    "153": "resources/modal-docs/guide/sandbox-files.md",
+    "154": "resources/modal-docs/guide/sandbox-networking.md",
+    "155": "resources/modal-docs/guide/sandbox-resources.md",
+    "156": "resources/modal-docs/guide/sandbox-snapshots.md",
+    "157": "resources/modal-docs/guide/sandbox-spawn.md",
+    "158": "resources/modal-docs/guide/sandboxes.md",
+    "159": "resources/modal-docs/guide/scale.md",
+    "16": "resources/modal-docs/cli/latest/deploy.md",
+    "160": "resources/modal-docs/guide/sdk-javascript-go.md",
+    "161": "resources/modal-docs/guide/secrets.md",
+    "162": "resources/modal-docs/guide/security.md",
+    "163": "resources/modal-docs/guide/servers.md",
+    "164": "resources/modal-docs/guide/service-users.md",
+    "165": "resources/modal-docs/guide/slack-notifications.md",
+    "166": "resources/modal-docs/guide/streaming-endpoints.md",
+    "167": "resources/modal-docs/guide/timeouts.md",
+    "168": "resources/modal-docs/guide/trigger-deployed-functions.md",
+    "169": "resources/modal-docs/guide/troubleshooting.md",
+    "17": "resources/modal-docs/cli/latest/dict.md",
+    "170": "resources/modal-docs/guide/tunnels.md",
+    "171": "resources/modal-docs/guide/vm-sandboxes.md",
+    "172": "resources/modal-docs/guide/volumes.md",
+    "173": "resources/modal-docs/guide/webhook-proxy-auth.md",
+    "174": "resources/modal-docs/guide/webhook-timeouts.md",
+    "175": "resources/modal-docs/guide/webhook-urls.md",
+    "176": "resources/modal-docs/guide/webhooks.md",
+    "177": "resources/modal-docs/guide/workspaces.md",
+    "178": "resources/modal-docs/sdk/go/latest/Allowlist.md",
+    "179": "resources/modal-docs/sdk/go/latest/App.md",
+    "18": "resources/modal-docs/cli/latest/endpoint.md",
+    "180": "resources/modal-docs/sdk/go/latest/Client.md",
+    "181": "resources/modal-docs/sdk/go/latest/CloudBucketMount.md",
+    "182": "resources/modal-docs/sdk/go/latest/Cls.md",
+    "183": "resources/modal-docs/sdk/go/latest/ClsInstance.md",
+    "184": "resources/modal-docs/sdk/go/latest/ContainerProcess.md",
+    "185": "resources/modal-docs/sdk/go/latest/Errors.md",
+    "186": "resources/modal-docs/sdk/go/latest/FileInfo.md",
+    "187": "resources/modal-docs/sdk/go/latest/FileType.md",
+    "188": "resources/modal-docs/sdk/go/latest/FileWatchEvent.md",
+    "189": "resources/modal-docs/sdk/go/latest/FileWatchEventType.md",
+    "19": "resources/modal-docs/cli/latest/environment.md",
+    "190": "resources/modal-docs/sdk/go/latest/Function.md",
+    "191": "resources/modal-docs/sdk/go/latest/FunctionCall.md",
+    "192": "resources/modal-docs/sdk/go/latest/FunctionStats.md",
+    "193": "resources/modal-docs/sdk/go/latest/Image.md",
+    "194": "resources/modal-docs/sdk/go/latest/intro.md",
+    "195": "resources/modal-docs/sdk/go/latest/Probe.md",
+    "196": "resources/modal-docs/sdk/go/latest/Profile.md",
+    "197": "resources/modal-docs/sdk/go/latest/Proxy.md",
+    "198": "resources/modal-docs/sdk/go/latest/Queue.md",
+    "199": "resources/modal-docs/sdk/go/latest/Retries.md",
+    "20": "resources/modal-docs/cli/latest/image.md",
+    "200": "resources/modal-docs/sdk/go/latest/Sandbox.md",
+    "201": "resources/modal-docs/sdk/go/latest/SandboxCreateConnectCredentials.md",
+    "202": "resources/modal-docs/sdk/go/latest/Secret.md",
+    "203": "resources/modal-docs/sdk/go/latest/SidecarContainer.md",
+    "204": "resources/modal-docs/sdk/go/latest/StdioBehavior.md",
+    "205": "resources/modal-docs/sdk/go/latest/Tunnel.md",
+    "206": "resources/modal-docs/sdk/go/latest/ValidateExecArgs.md",
+    "207": "resources/modal-docs/sdk/go/latest/Volume.md",
+    "208": "resources/modal-docs/sdk/js/latest/App.md",
+    "209": "resources/modal-docs/sdk/js/latest/CloudBucketMount.md",
+    "21": "resources/modal-docs/cli/latest/intro.md",
+    "210": "resources/modal-docs/sdk/js/latest/Cls.md",
+    "211": "resources/modal-docs/sdk/js/latest/ClsInstance.md",
+    "212": "resources/modal-docs/sdk/js/latest/ContainerProcess.md",
+    "213": "resources/modal-docs/sdk/js/latest/Errors.md",
+    "214": "resources/modal-docs/sdk/js/latest/FileInfo.md",
+    "215": "resources/modal-docs/sdk/js/latest/FileType.md",
+    "216": "resources/modal-docs/sdk/js/latest/FileWatchEvent.md",
+    "217": "resources/modal-docs/sdk/js/latest/FileWatchEventType.md",
+    "218": "resources/modal-docs/sdk/js/latest/Function.md",
+    "219": "resources/modal-docs/sdk/js/latest/FunctionCall.md",
+    "22": "resources/modal-docs/cli/latest/profile.md",
+    "220": "resources/modal-docs/sdk/js/latest/FunctionStats.md",
+    "221": "resources/modal-docs/sdk/js/latest/Image.md",
+    "222": "resources/modal-docs/sdk/js/latest/intro.md",
+    "223": "resources/modal-docs/sdk/js/latest/Logger.md",
+    "224": "resources/modal-docs/sdk/js/latest/LogLevel.md",
+    "225": "resources/modal-docs/sdk/js/latest/ModalClient.md",
+    "226": "resources/modal-docs/sdk/js/latest/ModalReadStream.md",
+    "227": "resources/modal-docs/sdk/js/latest/ModalWriteStream.md",
+    "228": "resources/modal-docs/sdk/js/latest/Probe.md",
+    "229": "resources/modal-docs/sdk/js/latest/Profile.md",
+    "23": "resources/modal-docs/cli/latest/queue.md",
+    "230": "resources/modal-docs/sdk/js/latest/Proxy.md",
+    "231": "resources/modal-docs/sdk/js/latest/Queue.md",
+    "232": "resources/modal-docs/sdk/js/latest/Retries.md",
+    "233": "resources/modal-docs/sdk/js/latest/Sandbox.md",
+    "234": "resources/modal-docs/sdk/js/latest/SandboxCreateConnectCredentials.md",
+    "235": "resources/modal-docs/sdk/js/latest/Secret.md",
+    "236": "resources/modal-docs/sdk/js/latest/SidecarContainer.md",
+    "237": "resources/modal-docs/sdk/js/latest/StdioBehavior.md",
+    "238": "resources/modal-docs/sdk/js/latest/StreamMode.md",
+    "239": "resources/modal-docs/sdk/js/latest/Tunnel.md",
+    "24": "resources/modal-docs/cli/latest/run.md",
+    "240": "resources/modal-docs/sdk/js/latest/Volume.md",
+    "241": "resources/modal-docs/sdk/py/changelog.md",
+    "242": "resources/modal-docs/sdk/py/latest/intro.md",
+    "243": "resources/modal-docs/sdk/py/latest/modal.App.md",
+    "244": "resources/modal-docs/sdk/py/latest/modal.asgi_app.md",
+    "245": "resources/modal-docs/sdk/py/latest/modal.batched.md",
+    "246": "resources/modal-docs/sdk/py/latest/modal.billing.md",
+    "247": "resources/modal-docs/sdk/py/latest/modal.Client.md",
+    "248": "resources/modal-docs/sdk/py/latest/modal.CloudBucketMount.md",
+    "249": "resources/modal-docs/sdk/py/latest/modal.Cls.md",
+    "25": "resources/modal-docs/cli/latest/secret.md",
+    "250": "resources/modal-docs/sdk/py/latest/modal.concurrent.md",
+    "251": "resources/modal-docs/sdk/py/latest/modal.config.md",
+    "252": "resources/modal-docs/sdk/py/latest/modal.container_process.md",
+    "253": "resources/modal-docs/sdk/py/latest/modal.Cron.md",
+    "254": "resources/modal-docs/sdk/py/latest/modal.current_function_call_id.md",
+    "255": "resources/modal-docs/sdk/py/latest/modal.current_input_id.md",
+    "256": "resources/modal-docs/sdk/py/latest/modal.Dict.md",
+    "257": "resources/modal-docs/sdk/py/latest/modal.enable_output.md",
+    "258": "resources/modal-docs/sdk/py/latest/modal.enter.md",
+    "259": "resources/modal-docs/sdk/py/latest/modal.Environment.md",
+    "26": "resources/modal-docs/cli/latest/serve.md",
+    "260": "resources/modal-docs/sdk/py/latest/modal.Error.md",
+    "261": "resources/modal-docs/sdk/py/latest/modal.exception.md",
+    "262": "resources/modal-docs/sdk/py/latest/modal.exit.md",
+    "263": "resources/modal-docs/sdk/py/latest/modal.fastapi_endpoint.md",
+    "264": "resources/modal-docs/sdk/py/latest/modal.file_io.md",
+    "265": "resources/modal-docs/sdk/py/latest/modal.FilePatternMatcher.md",
+    "266": "resources/modal-docs/sdk/py/latest/modal.forward.md",
+    "267": "resources/modal-docs/sdk/py/latest/modal.Function.md",
+    "268": "resources/modal-docs/sdk/py/latest/modal.FunctionCall.md",
+    "269": "resources/modal-docs/sdk/py/latest/modal.Image.md",
+    "27": "resources/modal-docs/cli/latest/setup.md",
+    "270": "resources/modal-docs/sdk/py/latest/modal.interact.md",
+    "271": "resources/modal-docs/sdk/py/latest/modal.io_streams.md",
+    "272": "resources/modal-docs/sdk/py/latest/modal.is_local.md",
+    "273": "resources/modal-docs/sdk/py/latest/modal.method.md",
+    "274": "resources/modal-docs/sdk/py/latest/modal.parameter.md",
+    "275": "resources/modal-docs/sdk/py/latest/modal.Period.md",
+    "276": "resources/modal-docs/sdk/py/latest/modal.Probe.md",
+    "277": "resources/modal-docs/sdk/py/latest/modal.Proxy.md",
+    "278": "resources/modal-docs/sdk/py/latest/modal.Queue.md",
+    "279": "resources/modal-docs/sdk/py/latest/modal.Retries.md",
+    "28": "resources/modal-docs/cli/latest/shell.md",
+    "280": "resources/modal-docs/sdk/py/latest/modal.Sandbox.md",
+    "281": "resources/modal-docs/sdk/py/latest/modal.SandboxSnapshot.md",
+    "282": "resources/modal-docs/sdk/py/latest/modal.Secret.md",
+    "283": "resources/modal-docs/sdk/py/latest/modal.Server.md",
+    "284": "resources/modal-docs/sdk/py/latest/modal.Tunnel.md",
+    "285": "resources/modal-docs/sdk/py/latest/modal.types.md",
+    "286": "resources/modal-docs/sdk/py/latest/modal.Volume.md",
+    "287": "resources/modal-docs/sdk/py/latest/modal.web_server.md",
+    "288": "resources/modal-docs/sdk/py/latest/modal.Workspace.md",
+    "289": "resources/modal-docs/sdk/py/latest/modal.wsgi_app.md",
+    "29": "resources/modal-docs/cli/latest/skills.md",
+    "290": "resources/vscode-docs/language-models.md",
+    "291": "resources/vscode-docs/mcp-servers.md",
+    "30": "resources/modal-docs/cli/latest/token.md",
+    "31": "resources/modal-docs/cli/latest/volume.md",
+    "32": "resources/modal-docs/cli/latest/workspace.md",
+    "33": "resources/modal-docs/examples/agent.md",
+    "34": "resources/modal-docs/examples/algolia_indexer.md",
+    "35": "resources/modal-docs/examples/amazon_embeddings.md",
+    "36": "resources/modal-docs/examples/anthropic_computer_use.md",
+    "37": "resources/modal-docs/examples/basic_web.md",
+    "38": "resources/modal-docs/examples/batched_whisper.md",
+    "39": "resources/modal-docs/examples/blender_video.md",
+    "40": "resources/modal-docs/examples/boltz_predict.md",
+    "41": "resources/modal-docs/examples/chai1.md",
+    "42": "resources/modal-docs/examples/chat_with_pdf_vision.md",
+    "43": "resources/modal-docs/examples/chatterbox_tts.md",
+    "44": "resources/modal-docs/examples/claude-slack-gif-creator.md",
+    "45": "resources/modal-docs/examples/cloud_bucket_mount_loras.md",
+    "46": "resources/modal-docs/examples/cron_datasette.md",
+    "47": "resources/modal-docs/examples/db_to_sheet.md",
+    "48": "resources/modal-docs/examples/dbt_duckdb.md",
+    "49": "resources/modal-docs/examples/diffusers_lora_finetune.md",
+    "50": "resources/modal-docs/examples/discord_bot.md",
+    "51": "resources/modal-docs/examples/doc_ocr_jobs.md",
+    "52": "resources/modal-docs/examples/doc_ocr_webapp.md",
+    "53": "resources/modal-docs/examples/esm3.md",
+    "54": "resources/modal-docs/examples/esmfold2_binder_design.md",
+    "55": "resources/modal-docs/examples/fastrtc_flip_webcam.md",
+    "56": "resources/modal-docs/examples/fine_tune_asr.md",
+    "57": "resources/modal-docs/examples/finetune_yolo.md",
+    "58": "resources/modal-docs/examples/flux.md",
+    "59": "resources/modal-docs/examples/generate_music.md",
+    "60": "resources/modal-docs/examples/grpo_trl.md",
+    "61": "resources/modal-docs/examples/grpo_verl.md",
+    "62": "resources/modal-docs/examples/hackernews_alerts.md",
+    "63": "resources/modal-docs/examples/hello_world.md",
+    "64": "resources/modal-docs/examples/hp_sweep_gpt.md",
+    "65": "resources/modal-docs/examples/image_to_image.md",
+    "66": "resources/modal-docs/examples/image_to_video.md",
+    "67": "resources/modal-docs/examples/liquidai_embeddings_server.md",
+    "68": "resources/modal-docs/examples/llm-finetuning.md",
+    "69": "resources/modal-docs/examples/llm-voice-chat.md",
+    "7": "resources/modal-docs/cli/changelog.md",
+    "70": "resources/modal-docs/examples/llm_inference.md",
+    "71": "resources/modal-docs/examples/long-training.md",
+    "72": "resources/modal-docs/examples/ltx.md",
+    "73": "resources/modal-docs/examples/mcp_server_stateless.md",
+    "74": "resources/modal-docs/examples/ministral3_inference.md",
+    "75": "resources/modal-docs/examples/modal-vibe.md",
+    "76": "resources/modal-docs/examples/modal_tailscale.md",
+    "77": "resources/modal-docs/examples/mongodb-search.md",
+    "78": "resources/modal-docs/examples/music-video-gen.md",
+    "79": "resources/modal-docs/examples/nemotron_inference.md",
+    "8": "resources/modal-docs/cli/latest/app.md",
+    "80": "resources/modal-docs/examples/opencode_server.md",
+    "81": "resources/modal-docs/examples/potus_speech_qanda.md",
+    "82": "resources/modal-docs/examples/pushgateway.md",
+    "83": "resources/modal-docs/examples/s3_bucket_mount.md",
+    "84": "resources/modal-docs/examples/safe_code_execution.md",
+    "85": "resources/modal-docs/examples/sandbox_pool.md",
+    "86": "resources/modal-docs/examples/serve_streamlit.md",
+    "87": "resources/modal-docs/examples/sglang_low_latency.md",
+    "88": "resources/modal-docs/examples/simple_code_interpreter.md",
+    "89": "resources/modal-docs/examples/streaming_kyutai_stt.md",
+    "9": "resources/modal-docs/cli/latest/billing.md",
+    "90": "resources/modal-docs/examples/text_to_image.md",
+    "91": "resources/modal-docs/examples/unsloth_finetune.md",
+    "92": "resources/modal-docs/examples/vllm_throughput.md",
+    "93": "resources/modal-docs/examples/webrtc_yolo.md",
+    "94": "resources/modal-docs/examples/webscraper.md",
+    "95": "resources/modal-docs/guide/apps.md",
+    "96": "resources/modal-docs/guide/async.md",
+    "97": "resources/modal-docs/guide/audit-logs.md",
+    "98": "resources/modal-docs/guide/batch-processing.md",
+    "99": "resources/modal-docs/guide/billing.md"
+  },
+  "rows": [
+    {
+      "mime": "text/markdown",
+      "name": "repo-b335630551682c19a781afebcf4d07bf978fb1f8ac04c6bf87428ed5",
+      "op": "add",
+      "origin": {
+        "kind": "repo-file",
+        "path": "README.md"
+      },
+      "ttl_days": 1
+    },
+    {
+      "mime": "text/plain",
+      "name": "repo-c6b9239a70d05ed37a421b4516d65b60636336c78692353b03c81b65",
+      "op": "add",
+      "origin": {
+        "kind": "repo-file",
+        "path": "localmodal.vine"
+      },
+      "ttl_days": 1
+    },
+    {
+      "mime": "text/markdown",
+      "name": "repo-fc8bfc8f647b70a1266f3b07521a97e8b85bdc9a2c22a2e2cbcdc059",
+      "op": "add",
+      "origin": {
+        "kind": "repo-file",
+        "path": "human-owned-spec/initial-spec.md"
+      },
+      "ttl_days": 1
+    },
+    {
+      "mime": "text/plain",
+      "name": "repo-7db856d23ab7d40aed73d089865e91a840b78db28738973011dabd3d",
+      "op": "add",
+      "origin": {
+        "kind": "repo-file",
+        "path": "proposals/scout-source-management.vine"
+      },
+      "ttl_days": 1
+    },
+    {
+      "mime": "text/markdown",
+      "name": "repo-00c13570977f62bcb41f9c58d38b264ab29f7ee1ab78afaa11da8931",
+      "op": "add",
+      "origin": {
+        "kind": "repo-file",
+        "path": "proposals/scout-vocabulary.md"
+      },
+      "ttl_days": 1
+    },
+    {
+      "mime": "text/markdown",
+      "name": "repo-4acc1b023459184dbcdad0da2251b19f675a5d07dc2717140462fc32",
+      "op": "add",
+      "origin": {
+        "kind": "repo-file",
+        "path": "resources/papers.md"
+      },
+      "ttl_days": 1
+    },
+    {
+      "mime": "text/markdown",
+      "name": "repo-2d094b64ceb66f1fd9e134c121665db94cdffa41b6da932b5039f158",
+      "op": "add",
+      "origin": {
+        "kind": "repo-file",
+        "path": "scout/README.md"
+      },
+      "ttl_days": 1
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-ffd53a7d0607eac6af8afbe21c6922795c45599419462325b5767fe7",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/changelog.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-816e3f5bb72d37ab7495d51c1d2ecb41459898711f22ba022700e54b",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/app.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-b7c586073af70ddb0391690a749e7c3e8634728ed2549ba3614ee06f",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/billing.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-1a9c7a9c69318f88fbba8fc96cec2978e5a4fbed4e0ef690317c67d1",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/bootstrap.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-b98a192ae7661598427dca68c1a14446934c6d175e830a340ea71651",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/changelog.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-84d639e66cf71710e08472d7bc1241a3ed7d033c82a2566093d3a08b",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/config.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-36c3c86a22e6b69800c3a45f27656cde4aa0cc4d335a75e1e50b72ec",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/container.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-6e80b685c545b7db6bed519b058dd1e4d586870a559b8fe0287ad087",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/curl.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-72c8657ea7a1542b28aecbb0231de85cda3ed1c6212dc9e0b235c21c",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/dashboard.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-460925892d3547419ddfe9029c9af95cf2578aed98a8cc35574ca68c",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/deploy.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-78262f1585594930719e01d3bed9252d32aa2c5c4a5d60789bb4651d",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/dict.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-9f5ef663f540ac6b258984e9b9b9cd91ab393cc912e7fa6eec51cbbb",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/endpoint.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-ac4a4b8288e7811effdc46e2cffb3f8d009b8c56080423376e687310",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/environment.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-e978d2a131cb8708325470b88a217493a309c90ec9266e2d06d81fc3",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/image.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-44d141ada1cfaafe7a6f02ff3c4aea4db5fca3cdcba3bc66a7ecc2b3",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/intro.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-5ac06dce8cbbbbe1d05d1c8eb7706e9954d59d59f8ad445af51c5a42",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/profile.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-997eb86570d47eaa751f5e96dc55c4a8688605f57cf0b58562e94f15",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/queue.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-9343d1be6d308b83a002c44a174f2ee6c70e10b40d5addee6030ae0b",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/run.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-091561c09db5d8d11574fcb529a61713ce3c8f4f531db6f41accb4b3",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/secret.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-2aa4860a4f951b8dc2ed823c3e60b54f1b7ba7bd55c6800e0bf47968",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/serve.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-9795408612a4c25dab5fdf91abeecc7821b49b0bebef3dd3e3cefd5e",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/setup.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-669d27dc5b05a34b96b47088408501e48403359312b073975776b223",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/shell.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-c7471575949f4e9380d2177eba5cbbe4bf8c13251518d4655a3993f1",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/skills.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-6f071b5521eba0dc8680cea30195fc6d84df508a24f9487f3f547587",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/token.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-0b8fbed0bac95abd4a0874d42293e224fc1c81b2c7e463b1bfad78df",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/volume.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-f512c35f850c2e8ec5587783c66559deb433962022a88d68a2732b2f",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/cli/latest/workspace.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-73e48292850b2ead4abbb0dd12cf05c73193a05b87dd0c249019e528",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/agent.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-d479531ad30e3736ab240b7e47f33cf659e525d8f180cc3c0001aae2",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/algolia_indexer.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-4a5c84a68a86722e2b46bc4ec35a3a865e7aa57b961524509ae60d65",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/amazon_embeddings.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-310afe83757165ad043cce119445f4adeafa9ec75924cbbcd07484a3",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/anthropic_computer_use.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-a88596a1b3296c9f4b6e3cf198632fe834d598258f9144db84b3abcf",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/basic_web.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-04bd48e17c9cc302715783148071814ef61c75df35dccc2221c5c287",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/batched_whisper.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-1fc2be8b02fdaac735fb3ece4764373a20030583755924c5d5d040dc",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/blender_video.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-c250994a3e2c24563580d012bb219e509c0623db4078d41278552d12",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/boltz_predict.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-dcae5436662c4d01791f98915586fff47a26bc6631c9626c560a2ebd",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/chai1.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-9104212746ecba892d47248294423cde8efb8a70e2254e3a79a15d23",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/chat_with_pdf_vision.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-bad7623b78d962dfcfb0d35d0a3d687efd30dbbf45e538f08d9cf48a",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/chatterbox_tts.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-031afc2b7cce789eae535aa1a5363f760af4558e99f44a539f5f0701",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/claude-slack-gif-creator.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-60b860e2ee275648ea2a5ba2d8a243da8deda8fa5d5de51be6bccc9c",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/cloud_bucket_mount_loras.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-81c29ac66a551fb82c634250609aa556d799f99ad6bdae2cffaf1ca4",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/cron_datasette.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-87efd7fcb215daf8e745cbbb0d8f7bc249188fb5b35f014aa644d6fd",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/db_to_sheet.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-5a0b60b01f1efdf06b4bb710c53f5f8f4ec30aab5c2ef5eaec0a5c52",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/dbt_duckdb.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-74cab00cc6f6be268c904651f44a0f84461764087cd54a8de0a84879",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/diffusers_lora_finetune.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-2e019ce16d610795cd489f74f31abe8006f7d3bf9498c4730765a976",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/discord_bot.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-193fac1d25484b4beb78384e06b139f7977ebaadff6f720ddf99fcbb",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/doc_ocr_jobs.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-233481da82d3d7a789521e079f1ca7eb4fc378b886fa438615aeed4e",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/doc_ocr_webapp.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-e7abe30ed19868586f52058c7f1ff90d9a41b421ff1c18a69b2f2a6e",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/esm3.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-a55827fdb70e1290cddfb1fa78c74d9b081e7b8ec2f9054a2b48e01d",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/esmfold2_binder_design.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-d74d81d471c89807f65afb2c7b10747aa0ad355b1c7d364710b3839f",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/fastrtc_flip_webcam.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-112cf2537e3defe04d9327c6cde4ea4ece2c567d947cc511c89539fc",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/fine_tune_asr.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-6e7bab13889304d5b6ed4155011cab166d2f99c68a89ec6f006501cb",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/finetune_yolo.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-9269d674f43d06c43410c984b1c9c61062e90c5581ad530d6b20ecf5",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/flux.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-1a11327183e23be4ee1a62ac71b4703a89807a4083f5f7c6a5fb3617",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/generate_music.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-3e903cedd93ab622a494b7c5ad4aca64ebc156ced8b5397523c26d38",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/grpo_trl.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-4e3296b0606919783268c188bc761071f32bba9e0e15e02bd23d08eb",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/grpo_verl.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-71a46656bd3dea8ea23601ba0631cac410ca7951e72fda692d95811b",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/hackernews_alerts.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-85cc88311eb23a41c6ea866ced77638ae7183589feaee9806c8f201c",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/hello_world.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-44683d58ad5f8247a65b2740f28e16249bbe8d8fb19cd9ee226fca97",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/hp_sweep_gpt.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-3851b4fdb9fda4f15a03a6cfbb406c043a65deb07f773020a7ccbc28",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/image_to_image.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-bd045e98a1c7f383958d7e2f6e996430746434b71272a90bed682da4",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/image_to_video.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-49561611df2743f6e1ce572d60233cb0a704f2fd0abe98189a90a8fb",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/liquidai_embeddings_server.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-e628feade9a4d254ce72c9ad8ac1209fe48be7c7dad0ed1fea51df28",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/llm-finetuning.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-0d7ec20c289bc54315f06947001003463d29f8839f6dfb2f2c7b0d58",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/llm-voice-chat.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-c5755cfc53fff97f4fd69497f462fdcff368813e36a1ab083a72305f",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/llm_inference.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-101aeccd6cc9fd7ffe9327c32c8a8d611865f7659affad30d9f04d43",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/long-training.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-240708e8011a7d01ac6973076b87ccb4f410605c4a71013c54714b28",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/ltx.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-51819476aefa1d6998a48dc2e64e449f0cee57e06dd63dcb5f99bf12",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/mcp_server_stateless.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-5533f6a4468eb39c4c05409a8b5b065a9a05fb0724a368ec55c224d3",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/ministral3_inference.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-2ef5ab4f56e754e9255f14d603bee945ee56eeb6e2b9d16ee080f8a8",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/modal-vibe.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-fbbaeb282d12e6788e1f2fd8479a2bbe0f325f48a15a44cd88b7421e",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/modal_tailscale.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-92f139c453a7fe0dc545a3bed34fa185ddeeb53441750828124f5092",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/mongodb-search.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-ddd6083337cebb77f9c201c903f400844db8c62a588b594114a4a865",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/music-video-gen.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-d3e68d7a1834b17549224158ad5c00e5bc7059b555d25bb1b942acdf",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/nemotron_inference.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-bba861190ab6980f187e12705a72e3669bcd252334a5d803bf59f8e4",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/opencode_server.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-0337c7318a2a01a9ef5b41cdd3f011eaf3f4b2296498ebd6c924fb62",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/potus_speech_qanda.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-19acf74d4e7ec62e0a950d3f4b93fb53bfa248797162251f6d22effc",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/pushgateway.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-e87df64495fc12a3e1f2a1be5ccecec0a46a13e299b8339b4b1d1d11",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/s3_bucket_mount.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-ca5ea2b6d8867390f6f06efbb2418d264eaa37f68cd5a2c47d913c71",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/safe_code_execution.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-db7b6fee34a9fca99716ff65ae720e83765bbcf9a32108f9a5aaeb46",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/sandbox_pool.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-8b39f34b986f07ea95066ac83fa983bff686b954f469db2e755bc284",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/serve_streamlit.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-23219017ac3be3bec1eea069351bdc456514e8ab9f67e4bf8d09be89",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/sglang_low_latency.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-c97e1f27d15ac4f907a35a935f976e570faee8336efa1eeecfc5a0cf",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/simple_code_interpreter.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-443c79653c08884d2cfda307081f3b312145e63a7322bc268dbd4008",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/streaming_kyutai_stt.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-37662d22327988571761e468492c9e05de46fa0d186c35adfd3bf988",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/text_to_image.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-73736fb37ea9601b704acd3ff24d4f78f4039a70612ad68f08b9aec6",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/unsloth_finetune.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-8e24cbd2d16fef2e810e22a921bd935f84c4e3e6853cec41f350c22b",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/vllm_throughput.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-9d1823d41f788be860f2a05cd20de0cbcce74a3ce225ab8219f0c8a8",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/webrtc_yolo.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-ac81524c97546a2536e04dee3d9a1bc637e8cb4e4c89d46e6e32c3d8",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/examples/webscraper.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-d3cb4b61f57274eb824259d87e31a11689dc52b0c0a3912249ffe71f",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/apps.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-7973031a7ad8691ee250e3600a360d31d552d6e9799103fa8c431920",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/async.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-c91a2536444202469221f51fbbb59f066cc886245afe947f2c02e123",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/audit-logs.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-314f5de36b5c7a904aace2420f841f945df93d8e5a90d0dd3e4fd80b",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/batch-processing.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-dc23ff9a9ad293adb7732a0da14d0e7a5881c208041d5524ab2434fa",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/billing.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-f47128beaf2da7c777739846e132cade7c3cd32a03e90f3d7b9b5e6f",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/cloud-bucket-mounts.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-8a18390291f865e645923bd79e3128a0bd3b20fa510a7649e7ab41d0",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/cold-start.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-56c0de413b6973eebb8d9042735316aaa8263a34551fccb737b47d0d",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/concurrent-inputs.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-63f1ba4f53cf5d35c1092d60ffae166a40fbc4bec5ad0d7235a76077",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/continuous-deployment.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-3657b37c24bf6bf7c04145e6cb3062977350a130081127e495dd86bf",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/cuda.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-baba0dedc34a953d06a54a79456c42680ff912af8aae5a57cebea5e3",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/customer-supplied-encryption-keys.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-3c7e0160eeb175ae590a40716ac120659fb0bd766378ef29800fe0aa",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/datadog-integration.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-8f810b18c7c806fbca6d1fb6854bf61bbc0a3103196325d6bfb1e670",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/dataset-ingestion.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-b264a64d015389ea14404866e3e477250dc553457af5515b20ee6087",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/developing-debugging.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-36f8d297a53aff274c702981cef7368c03fa29fc1c8287372136142f",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/dicts.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-a772de6bc499b5c4cf13ed2134f0461f9c35a32086395e240941ae12",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/dynamic-batching.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-ffe3df1d7fd931ad229fdce222f18ae5a7429cfec878ded8710ad2af",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/dynamic-function-config.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-fe3a61d4a20b507e20f9e030fa9f9cc2e164bfea741f73ae143859e3",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/endpoint-benchmarks.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-51f9e41490bd24f2fe4482384074a1831a2b99c2737933424cff924b",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/endpoint-metrics.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-a42a0c4fd20f71aaa3a7a82ba7e682de2668e9f0098c81c51658ec55",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/endpoints.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-5fdfe5fa6fb96c7032f89b126bc73d424b2217f1f471eb51c3bb9d05",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/environment_variables.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-e558307a39243debaf55d8110bc26605532484818d45ff1830e60395",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/environments.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-2214cfb246236cba6d35a197204fe60f0871819aded69079a5600a05",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/existing-images.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-24ed1fc32c9a70a22538e48a150a366b447f61dade3ae34542090c48",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/fast-pull-from-registry.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-86362bd6b0157ba7a780e22ced3c6c6f3a40784567d6a528b46fb4af",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/feature-maturity.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-2d7b4367f50e3c4313f925cf47215a04e505ee2da73895421380012d",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/global-variables.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-a9524431e9e667cbbb6601885183ed83b7ddeaa7a53b187021eb646d",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/gpu-health.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-a33dfb23fe252155c0749f2973e64a68a3c055f74f6ae7fd61155aa9",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/gpu-metrics.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-d76fdaa5e64038a63e4df06589856a5ba5d68562221d8dfd4de69d94",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/gpu.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-8679503e01c5ccc34f87b3a27f00980c5f771bddd7eed7208a17e3ee",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/high-performance-llm-inference.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-31d768209d041caabef9f36690c724cf7008b525a3594a529d017ca3",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/images.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-8e8eb07f43a21c250b24dd453bb0537e9888bfb010dcff5256731c9f",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/job-queue.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-220a09174dce18933448dcfe850d4ddc4e6b83fcfeb4bc391cbf195e",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/jupyter-notebooks.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-6136feab9e9c4d55e58d03d6ffb72e47123a45a48a5d42b327200ae0",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/lifecycle-functions.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-81a00ba8f0b48866d70363ebaa39782c178225c7fcbc3016f53ec43b",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/local-data.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-26ee382b5fa2e70899cdf4d461d1d251a40839a35809ce08ce2957ca",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/managing-deployments.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-17268204e3f70449dfca5338b2121f7afe189f1901c75090127d49c8",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/memory-snapshots.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-feeb1b67c8bbaf0db6d0a7782589bf575997711f78e0465ab0a83d45",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/modal-1-0-migration.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-0419fd5d39a6cd7066364d903f1b0ffa2787aebd030bf16286e0c1fb",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/modal-user-account-setup.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-b7e95dd492e5c1e1d88aad7cfc87eee9486b4eddb2bed5e36ac88e2a",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/model-weights.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-9a75fb10a33bc9f00bde4c021c700ce0a6966f36120074ce0ff1157e",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/multi-node-training.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-962581afadf3b09e4ef9929a79dee134283ec7ba0f2c72d201a90b09",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/named-images.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-e8a0b74b1cda11dcdac93b6b857c628feedab0a06058be1ada9a4146",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/oidc-integration.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-f97fc136eb56530a93817e5e1f2f72ad175c4d863a7c106988ca345a",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/okta-sso.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-2726a8fdec6d5e4a5f1833982aa457ad3ab8a55b6b3c5fcc67dfd54f",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/otel-integration.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-9a863c66fa08f0d37e8ece4be4347411fce729f2a11708779ebe1608",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/parametrized-functions.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-3f924f0dc32a573d9e011f7e7e9ff27048fad287a15f7c08aa1e0ad6",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/preemption.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-2e191c30b436671ec93cc7143715378f894a2162be410cad316f0d43",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/private-networking.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-3e703098583876292e1881806e305b13586ed93cd597432e0302641c",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/project-structure.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-9243ee5499ac5324666582a2679914d75675a0c20236dbcc826ae812",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/proxy-ips.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-8a01d2470eb158f23866337c6f604eb48e910884a06883d3cbcb56e0",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/queues.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-42fa0be2124e58b842d9a5e60beddeaa8f3586f3a5bab8661e9712eb",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/rbac.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-a314efacefab05a0ad905c58656aefad4851580b4f1cab420e8fec78",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/region-selection.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-138fc7bebb9f13e2b241ec7f2a024fc98ca17e13faaae8a076c7dfce",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/resources.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-b7ef10ee5477ddc8e7d70415f18e88c1e19246175e187c63a0c5c3d0",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/restricted-access.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-3a8b4d4ab297b09d4140a95a83d138350dfd726c851f2923fbccbf7a",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/retries.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-2d7695067276f4134fa54a9dfeb81738bf59ebcd2b7b1b94df96968d",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/s3-gateway-endpoints.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-3b80a051e0ac4d6bff4b47492e6003e62c1aa70194f550d193965725",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/saml-sso.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-fd9645d3a2f8144c2823f237985b6c080c8c76dac40c265439f8cda7",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/sandbox-files.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-7974fdc8f5cab73efb1583b7b0fd2e73bc85f00c97e94368c58d8705",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/sandbox-networking.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-276d2fa0c4e97d54a943c92515c991e82a97c8b84c43235e7a97dde7",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/sandbox-resources.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-ce7d423d6f8e37473c44406ee0f8e2356850079a618d8533d9b5f01d",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/sandbox-snapshots.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-c257f4c5e313c38a1637e67185ba2c088e3f864090b8a6d62b2b2286",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/sandbox-spawn.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-0954b3bb98f9f6cb95fbeaf3c90865f899caf33d70a5ccd529d05a05",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/sandboxes.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-27124eaf52a4da6f3f3c2506834402afc19e13a5a43e265ff8a8a89e",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/scale.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-72771176c6936e91e921c8ad69ab173f8a36ebe87c5b5121fff29ff7",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/sdk-javascript-go.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-98d342133c4b88c834a7b1a57e62c2583c956e011ba99ba5049ad874",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/secrets.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-66b0e096c032fe1df0f4f023b0fce417f17ce7e26c75fb09e10bdfa7",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/security.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-e9cc256c597fa0a31fd8e98de12401cc125b685ab3e162ff6d0500e8",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/servers.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-e20fd34763465f52cce9612e2e0a7a39864327bbacbde2b858f39eb0",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/service-users.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-315dfde7b294072e711fac63d7a7fbf320fe7daee223e4021a09b610",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/slack-notifications.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-bd27324c9ead74d8ecba8404f0812232162a99b76289a9448e75a4a2",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/streaming-endpoints.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-fc01c6c2bf67d808516b963ee3ec30d4dba9d5c5495a788a73b624c7",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/timeouts.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-79cdf245b73ad5e53c04319ea4a2a5ab1cfe01b9a4988159fe88076d",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/trigger-deployed-functions.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-11285e9ebf1245f280aee48e0e92cbc44aa73b3aa99dcc97c2797c85",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/troubleshooting.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-efbe191ab042408a7e7626e4b87bda3fcb8f5e0bfea27015965c1a54",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/tunnels.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-64f2c7348df6c0c508b28a15848e324fa110aab2a13ccb43473acf47",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/vm-sandboxes.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-1990ab2695b5dc01c66950200e53ec47c5f8ddd64a63a1f658219df9",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/volumes.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-ad1a6846269b45281e5f7de01b9b9025001a7e8904ff2ca382837c15",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/webhook-proxy-auth.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-76cc91325e70db121bec2db7e9c7eed81449b440151946dfd156411d",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/webhook-timeouts.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-dac6d179bfa63ede5b0fc91b0d77eab88bdc893ed47aa663b6b4dd41",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/webhook-urls.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-e88afef00363791faddb4feed55307c263492eec6e8cc4e803e81fcd",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/webhooks.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-570e010225e3654610cf886251c4ec3b7d5f3e1859effda581082309",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/guide/workspaces.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-de4d3bf96c375771b38da1150592aa54073f8836643e115274ed70af",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/Allowlist.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-64afc760b891e590ffb7335f23872536a9614502ac1f00eaeafc245b",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/App.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-7ba631abc608d2bdf26fb6e94a83a8845c94fc9c5963f98990ff6be2",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/Client.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-facdf318625c3ebe3dbc5bb060eee73e42f89ccedef2ed28b58ed16c",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/CloudBucketMount.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-3c65e0596e327b0c76f69a09e8deacb6586c3e15268b8ec73076e26b",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/Cls.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-2816b205138579d75b99094a3003df630df82045fc861e78e47dcdc4",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/ClsInstance.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-abe3f68a5a0d312b91fdaefe0d1b4331146dd05e7a0f955c595dc800",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/ContainerProcess.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-bf777425c4a26c97263daa185b3d1ded8e621c1fbd0ed7ba99469477",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/Errors.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-872a57e9285a1c321169aaa4e9cd6798387925e320bb891d0eb136c3",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/FileInfo.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-3eae71559986d6b502cdb3ab1f550e8adb12feb2486451056a90a245",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/FileType.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-0088425029dfc8dca82b6809791d40309d778b35b711858b8f4ae8a5",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/FileWatchEvent.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-d0cda9e7d3cd0cad6a0125fd96a122c7bfcd5f47271c2763b9bc5a46",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/FileWatchEventType.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-8a68414e21a702c465bbcde7e4aeb9d78b407570e5995c31b5a23469",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/Function.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-24c899903cc0cd07c906055b282d81abb2f884181249108b0a4d09c8",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/FunctionCall.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-35b71ad2c9d1346ead0ede878aa7708c1f7cb88e3bb6303e79acd618",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/FunctionStats.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-40bdff829e01b69b3384ee0bf2399725f5df40113acd9d11c134eac7",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/Image.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-01dffe2d9751949140ece61db156e62a9f585499345566bf8df06d54",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/intro.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-8889d98620b1fc79626e3cefeab4023bf585cf3fb26aa84b26266f2a",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/Probe.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-73fea586244d8bed5c8996b725c655a374a30cbcaa7f8a228ea261af",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/Profile.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-e02638246266a7e328c33211ab02db68af0987b7e8d60a0d62d55f1b",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/Proxy.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-de35415f4233004a322c68ada32e303bbe8424005f06ff978f0a4b07",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/Queue.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-ecdab16282fbd7d19a2f328bfc72bf5a04a4726c1cb4ad4f681e84a5",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/Retries.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-9a399b0c9ebab48f453b58c9a8d22bd8319f95c752f4c99588e10806",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/Sandbox.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-30e2c79e68e001b6d06c6db07143078d67b3c041bf17d31a3783c53c",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/SandboxCreateConnectCredentials.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-811bb6fce19338e3064714792db169fbc8f3893e7b2e6c6202be7fd4",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/Secret.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-df2a5a8720fdc0c14cda4b29bb86676f2e44e34ace1c042719f903ff",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/SidecarContainer.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-2199cd4b1943c7e4012b0135b474f8ebae01324e160548087b127ae7",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/StdioBehavior.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-cb388b63afeb362654f21f7e6ea307b02cea7ef5d25a7a83a37024c4",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/Tunnel.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-89197fc0e28fd6102dfc5d8b1059382180e29232e21d5a59aa26634c",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/ValidateExecArgs.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-9201dcdc05e48af020664c3dfe84205b3941e1ed7658ce2d0aab16e7",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/go/latest/Volume.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-4d4809e54e96595c67e6c7ef8cc4e5400559529670f62b46069cd7c8",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/App.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-7370775feb131b59aa2fd0e3366e403886b5d95395ac4b04723deb4c",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/CloudBucketMount.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-a48238b35e6c1d44e7af5658d51269fb06000bfef6ecb0e420f75e84",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/Cls.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-17eaea2a71d6f36bb09c3bc89bbb53246997cfa17c1e7d176d64d0ef",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/ClsInstance.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-6afed7fa3b6926b38d9217aad834c3913f57cbaada9e2feb96fd481d",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/ContainerProcess.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-1c86c024dd856c390b9d5e20fb0ced17f8190d7ca5243ac384764068",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/Errors.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-f45f0503dc00ce04f7ad1cd0258bf9db7088a36e5acbd30a7e72be24",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/FileInfo.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-71cb2769faa8497b163d9dd9796bb83faa433c07a3924a1ed58f15fa",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/FileType.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-14f21b66d0bb8b257c4938c24dfb7fdf54e9b9225175065bb8d5aa46",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/FileWatchEvent.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-a5b69694209cccb343dc1882bb631d4f97d47fcfbc7d026e95d082c2",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/FileWatchEventType.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-6af98fad6ffcc48101ccfa52fdd9be4413d99082434887c3d27f4409",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/Function.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-c1fe720dd66d70eeb440ad23339e1c97c13a390e6e8ff4f800cb4d0e",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/FunctionCall.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-319be01c88ef90ecbc3221f57d253932fc06cef1ba051e7f23b58d57",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/FunctionStats.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-76a499ce36238f59e204a5a12a3dda8e052348bea2b61210453b0c3b",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/Image.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-b9006ad28ca79100bffe66068d41caf9ca3ffc5e9dad81e928137261",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/intro.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-68318e51ccff0005467237a062ce2a871e804ddc23072c9d8b3d3a96",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/Logger.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-193fd04a0cc4e4601965670a3b7b0e361711ab4e140e70e26094dd33",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/LogLevel.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-bf44751d3001080e80d5f74895d782375cbea9177ea61d7a70e6986b",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/ModalClient.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-2c13c82341777b4ac7c76f4eb60ec14b1117d1c2a7db94a178b6da3a",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/ModalReadStream.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-9a21a7a2c8a37279949127187a130ce9a0698a9490104e8b3a24be8d",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/ModalWriteStream.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-ed3a2e94f259f402e054cd45ce3d74ef8ff192b0f0364c6f7e7fe716",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/Probe.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-5f6e4c3a181f003124b3f40bdc34c4819720bc45b6895dc8b2c3ecbb",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/Profile.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-76b8ac822e1bf1c9d9189f42b713b88f24dcc532c0c8e4b81f540aaf",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/Proxy.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-5a2d4342a2eabc07c3deb72af7bda4f7caab1a0540f3d2af2fa1b02f",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/Queue.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-825a4e00d5ee3d8433df6a8bc9851967d043a8f9bf5783bd0bea9243",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/Retries.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-a7fb382d4abba53896e1539f29d4046ecfa05ec8a80ffaed297d2763",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/Sandbox.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-0b1d6a2809f2cef531a369337472cd7bb9f6bc946f8de98637749210",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/SandboxCreateConnectCredentials.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-0f2b5dc4c991f29523ff19df858a7f57d19b2b3e44e76b1eb998e288",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/Secret.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-69ac43f66008129d12e6b490a7336bb1e1d0928fe0152cfe37fc31a7",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/SidecarContainer.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-2d72eaccc769027ca17eb0978fa83075315cffed2bb1a387466daf00",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/StdioBehavior.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-d14763164d64502398149156e10ab5c5e0a2cc27e0a0d411e0ca77e5",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/StreamMode.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-97aa8047be354786d3219f859c009e238e88a7aabf0e1914f593485f",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/Tunnel.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-13a78f39546f55f3931e79f8494ceeecd4ae6d4f23a54aeff7d574af",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/js/latest/Volume.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-abb9721b86030283a591502912076c11e87796c9db529e79d6698a6a",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/changelog.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-05bde3c0cccf464d645acdf3c05fe598db99ddd8137a3813553689b1",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/intro.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-293aebc497d942e41c4682a5f85881a6e1c990734122250b6771cc47",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.App.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-ffdb94d79d9db725a7c911afa5fbb02caa392d232b387368a912a3da",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.asgi_app.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-0d534957442e573f83ce3d432004981590559a9637717d4c5f547acb",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.batched.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-3a3eef5571f0d74fb46afae7ec05f22b868df72b92d8be97fe146f9f",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.billing.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-39a773b3a7a6438ead4c96e9712928caaa491144cc9fcfe1d019a4d2",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.Client.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-a6680dab4a2d2f68d108346f92f3b677a7364cddd858c03db9644af6",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.CloudBucketMount.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-d5f0e8d1c50a7eab576768928c82f87cce05271e04d28faa21b07c3d",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.Cls.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-b353eee9cc21250d0b80afeab5260b21b0ed54168ebf2974daa6a85c",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.concurrent.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-97df853001127d9574db9c0b17e13f6f834388527e8124970b8d3334",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.config.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-b0f4628f74e839f237c695e721506c5c5557154731c0475f0c5259da",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.container_process.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-1a01172deac08dbd5b7cac0d1d36ba56be95d813c1385aac8c2fae86",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.Cron.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-1fbbe8db9c537425736afca61ef22c5c307410672bfe2c3c2df9a4fa",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.current_function_call_id.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-68fab69dd2ecfae85387589a30a11c5920964fbeb0fb641122175c4c",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.current_input_id.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-84acc5f10ede9cef9edbaa0b3745a39378c4e29fb1980c3650906713",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.Dict.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-7b0ec52a81d18e84c3ae2e474f0d8fe9e1e867f4c342a376bd96036f",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.enable_output.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-7915932f259f1e21eaf6a8346671617d659847ce8d4987db09b9cc5d",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.enter.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-c4b1c4942e0da6be39a8ac9b799b51ef7b3ef90b6007e5468200688b",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.Environment.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-ff2658692eefcb82f12d7eacbdbb4c90102dea613185371e74a792fb",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.Error.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-ef80956cb95b4c6b68131a53644383c9b0f3470207bda507fcf19b6d",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.exception.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-45fbf8b33a1058e9409f9009284737799f3f8b59c44cf08b389d6f9f",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.exit.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-5c37d614d0c96669ba4f1b5ea3fdcd4668b47349115f81caa392994c",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.fastapi_endpoint.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-a0901c244db565ffe23425b065ba96857dc2349d6668948366fee719",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.file_io.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-283ce57bca28fa7a20467ce2c948c26888f58b2a5bc992f387c1ac3a",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.FilePatternMatcher.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-f3ba5bf7f3c2661ab5243793bff8a79fac456c8e8ae23cee1b8ef278",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.forward.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-e5774f7b491441cbe65923e2ebfedaba7c1a3cedcffc0de756729636",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.Function.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-0665cbd16d170c2e1a4eb3aa810766dfb010128f4ee0c09b3bc75a8b",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.FunctionCall.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-23a3c2ebdec272f3b3ceea862d6c4149641b2aeff49ce2e3c1d3495c",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.Image.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-f2cfae45033bfa1efe4b2fb190b2ece563a4170b4c7330f9f205d26e",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.interact.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-ceb4bfac4c096977abf92c4837ad152a774c2b1c2ae71007b63c8357",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.io_streams.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-66b8505627778a56fdb38b703f6d7316c551a367993f28f45f3bb101",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.is_local.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-6d343ba761989965c24199bc33d4113437ff80c4149d7a38e7a16dd6",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.method.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-1908b582dc6fd98dd02cb55eec1a31bd958aa215c4c07b183aa57ea1",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.parameter.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-fd25e0eccc045a57f354dc7af69d1fa7ed0db24789ab1ddbdf07f0c3",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.Period.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-9ae1a9a334f5b12f119622b3bc0e365012dd782466a86b68a31fe824",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.Probe.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-8a5f203fb89dd5e929b351d47395d29ce5843ad232f1ce7eb507af48",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.Proxy.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-f516720e3fb9d8d902a579055eb4b17c32a66cd8dcb258ff280e7001",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.Queue.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-60b69658d05251bafe36224b48fccb82450f69e04c5288e0d4b7be42",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.Retries.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-3f004647416c1e3e86b1e90da5f26cc14debb88ef8d9b6fb9eac3e43",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.Sandbox.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-0cf020cac4e45d845f0c66e451e84cea849c4ac06684e1d89bc69cac",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.SandboxSnapshot.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-6ca76ab4f96fe2e5ac0c0c401e32f41838dc33d6684f2fd3c740199b",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.Secret.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-cf7574410bab85affc5acb04af7728bbc8c1bb0aad8ad6bfb1359beb",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.Server.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-74445d845fe185778c48a4a1b065370df22b94466551d7a9f801c0a8",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.Tunnel.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-4ce671cc2a65620952292c5b841f5ec33ba95ed8360ac29824dfe020",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.types.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-18cb269f448e3f725835896776daa5939fe14d5d340e8a35e7348dd8",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.Volume.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-926d4e4ba732f8fd92bade663542f3fd3167ca2d5a678cf5de5a84f6",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.web_server.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-534eb499f883061acb7c56c14ab65ed817bbe5a30a49544517d2ac88",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.Workspace.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/markdown",
+      "name": "modal-1361a8158a87b0314eb063dbc895f2bd068b17cc2d3bf27ade5920d0",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://modal.com/docs/sdk/py/latest/modal.wsgi_app.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/plain",
+      "name": "vscode-f15ebd4cf3ca5ebfddb2a8325a48ba2e25f6f438d87b7309c8f71900",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://raw.githubusercontent.com/microsoft/vscode-docs/main/docs/agent-customization/language-models.md"
+      },
+      "ttl_days": 30
+    },
+    {
+      "mime": "text/plain",
+      "name": "vscode-68bd4e344c585eb9558618fe6b25c491e66f58d867ffcd7d44246d6d",
+      "op": "add",
+      "origin": {
+        "kind": "https",
+        "url": "https://raw.githubusercontent.com/microsoft/vscode-docs/main/docs/agent-customization/mcp-servers.md"
+      },
+      "ttl_days": 30
+    }
+  ],
+  "schema_version": 1
+}

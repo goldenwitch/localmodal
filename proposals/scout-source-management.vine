@@ -2,7 +2,7 @@ vine 1.2.0
 prefix: ssm
 title: Scout source management
 ---
-[ssm] Generalize scout source onboarding and indexing (planning)
+[ssm] Generalize scout source onboarding and indexing (complete)
 Two Scout commands replace the current per-vendor pattern (a bespoke
 fetch_modal_docs.py-shaped script per source, a hand-added tuple in
 search.py's DOCS_SOURCES, a manual search.py --update run): a batch mutation
@@ -87,8 +87,8 @@ windows, since a task is already the natural retrievable unit.
 > An invalid current store blocks normal additions and removals until it is restored from its self-described failure report.
 @guidance text/markdown scout-vocabulary.md
 ---
-[ssm/design/source-artifact-contract] Design source descriptor-to-artifact contract (reviewing)
-The physical sources.json ledger is generic; every caller enters through the
+[ssm/design/source-artifact-contract] Design source descriptor-to-artifact contract (complete)
+The ignored physical `.scout-ledger.json` ledger is generic; every caller enters through the
 single access boundary designed in ssm/design/ledger-access-boundary. This
 contract governs every source registered through Scout's source-management
 commands: each retains the fixed declaration together with current state; there
@@ -127,16 +127,19 @@ shape.
 > A successful materialization returns a validated staged candidate manifest: artifact path, bytes, SHA-256, observed MIME, and origin-resolution evidence; a candidate is not query-visible.
 > Failure is separate from a staged candidate and a live snapshot.
 > Chunk kind is a separate local indexing concern and never reuses the source mime field.
+> Operation-owned candidates stage only beneath `resources/.scout-staging/<operation-id>/...`; failed or abandoned operations remove that private staging before their journal is discarded.
 ---
-[ssm/design/ledger-access-boundary] Design authoritative ledger access boundary (reviewing)
-resources/sources.json is one generic source ledger. Every current and future
+[ssm/design/ledger-access-boundary] Design authoritative ledger access boundary (complete)
+resources/.scout-ledger.json is one generic source ledger. The tracked
+resources/sources.json file remains only the pre-activation compatibility
+freshness ledger and is never a source-control snapshot. Every current and future
 caller uses the same authoritative physical-ledger access boundary; no source
 category has a separate writer, lock, journal, or recovery protocol. The generic
 persistence contract is: an add applies directly through the locked atomic-write
 path; an update or remove first durably records its intent; and every later
 ledger access detects a present journal before returning a ledger view that
 conflicts with it. The approved physical representation is a sibling intent
-journal beside sources.json: sources.json remains the last committed readable
+journal beside .scout-ledger.json: .scout-ledger.json remains the last committed readable
 ledger, while the journal is the separately durable, recoverable pending
 update/remove instruction.
 
@@ -154,16 +157,17 @@ add and durable update/remove intent/claim primitives, no two independently
 implemented writers can mutate the physical ledger or bypass recovery, and no
 external work can hold the ledger lock.
 -> ssm/design/foundation-diagnostics
-> sources.json remains one generic source ledger.
+> .scout-ledger.json remains one generic source ledger; tracked sources.json remains pre-activation freshness metadata.
 > Every ledger writer uses one authoritative access and recovery boundary.
 > Adds apply directly through a locked atomic write.
 > Updates and removes durably record intent before atomic application; a later ledger access detects a pending journal and enters the settled recovery handoff before serving a conflicting view.
-> Intent storage is a sibling journal: sources.json is committed data; the journal is a pending update/remove instruction.
+> Intent storage is a sibling journal: .scout-ledger.json is committed data; the journal is a pending update/remove instruction.
 > The ledger lock covers only ledger/journal state transition; the recovery handoff owns external work and the final publication replay/delete condition.
 ---
-[ssm/design/source-registry] Design the source ledger and its CRUD operations (reviewing)
-Redefine the source registry as a single ledger -- sources.json's existing
-fetched-state role absorbs the registry too; there is no separate descriptor
+[ssm/design/source-registry] Design the source ledger and its CRUD operations (complete)
+Redefine the source registry as a single ignored runtime ledger --
+.scout-ledger.json owns source state while tracked sources.json retains only
+pre-activation freshness; there is no separate descriptor
 entity. Physical access to that generic ledger is settled by
 ssm/design/ledger-access-boundary. Each source record retains the fixed declared
 row: name, origin locator, required
@@ -225,16 +229,17 @@ parser for user-facing warning strings.
 -> ssm/design/source-artifact-contract
 -> ssm/design/source-publication-boundary
 ---
-[ssm/design/source-artifact-path] Design source identity to artifact-path mapping (reviewing)
-Source names are lowercase ASCII `[a-z][a-z0-9-]{0,63}`. Their safe artifact root is exactly `resources/scout-source--<name>`, making the mapping total, one-to-one, stable, and case-safe on Windows. Each committed snapshot lives beneath `<root>/generations/<snapshot-id>/content`; `<snapshot-id>` is an opaque publication-qualified generation identifier. Candidate bytes are staged beneath the same root but never referenced by a publication until validation and index construction succeed. An `add` replacement retains old committed generations until no retained publication references them; a remove only makes a source unqueryable through a next publication, then cleanup may reclaim unreachable generations. No operation may traverse, rename, or delete another source root.
+[ssm/design/source-artifact-path] Design source identity to artifact-path mapping (complete)
+Source names are lowercase ASCII `[a-z][a-z0-9-]{0,63}`. Their safe artifact root is exactly `resources/scout-source--<name>`, making the mapping total, one-to-one, stable, and case-safe on Windows. Each committed snapshot lives beneath `<root>/generations/<snapshot-id>/content`; `<snapshot-id>` is an opaque publication-qualified generation identifier. Candidate bytes are staged beneath `<root>/staging/<operation-id>/<snapshot-id>` so the journal owner can reclaim an interrupted or failed operation deterministically before rematerialization. Staging is never referenced by a publication. An `add` replacement retains old committed generations until no retained publication references them; a remove only makes a source unqueryable through a next publication, then cleanup may reclaim unreachable generations. No operation may traverse, rename, or delete another source root.
 Accept: deterministic fixtures prove distinct valid names map to distinct roots, an upsert gives the same source identity a new generation without changing its root, and removal/recovery cannot affect another source's artifacts.
 -> ssm/design/source-artifact-contract
 -> ssm/design/source-registry
 > Valid source names are lowercase ASCII `[a-z][a-z0-9-]{0,63}`.
 > Artifact root is exactly `resources/scout-source--<name>`; snapshot content is generation-qualified beneath that root.
+> Candidate staging is operation-owned beneath `<root>/staging/<operation-id>` and is reclaimed on failure or recovery before any rematerialization.
 > Replacement/removal retain generations referenced by any retained publication and reclaim only unreachable generations.
 ---
-[ssm/design/batch-atomicity] Design source batch commit semantics (reviewing)
+[ssm/design/batch-atomicity] Design source batch commit semantics (complete)
 A proposal first preflights every row against a virtual registry. Any rejected row yields its row diagnostics; if one or more rows are rejected, no runtime work occurs for any row. `remove` of an absent name is a successful `not_found` outcome and leaves virtual state unchanged. If preflight accepts every row, Scout stages every fetch-bearing add and prepares the one resulting indexed-material generation. A materialization/index/publication failure prevents the entire batch from committing: the failed row reports its reached stage and diagnostic, while every otherwise staged row reports `not_committed` with the batch failure reference. Only one successful publication commits the full accepted virtual registry; every add then reports `published`, every existing remove reports `removed`, and every absent remove reports `not_found`. Interrupted accepted work remains one journal operation and later recovery completes or reports the same batch; no valid subset commits independently.
 Accept: one client-visible batch result has exactly one outcome per input row; rejected proposals have no runtime trace; runtime failure commits no subset; and successful outcomes imply the source declaration, snapshot, and indexed-material membership crossed one publication together.
 -> ssm/design/source-publication-boundary
@@ -243,13 +248,13 @@ Accept: one client-visible batch result has exactly one outcome per input row; r
 > Accepted rows publish as one atomic batch; fetch/index/publication failure commits no subset and returns `not_committed` outcomes for otherwise staged rows.
 > `remove` of an absent name is a successful `not_found` outcome, not a rejected row.
 ---
-[ssm/design/source-publication-boundary] Design the source publication boundary (reviewing)
+[ssm/design/source-publication-boundary] Design the source publication boundary (complete)
 The approved reader model is a master publication pointer. It names one
 immutable publication generation that binds the Scout source-state snapshot,
 one live artifact generation or no snapshot per source, and the corresponding
 indexed-material generation. Once the source control plane takes public-query
 ownership, every public search reader resolves this master pointer first;
-sources.json remains the generic mutation/recovery ledger and is not
+.scout-ledger.json remains the generic mutation/recovery ledger and is not
 independent query truth. A descriptor update is not reader-visible until its
 candidate artifact and indexed-material membership are ready; removal is not
 reader-visible until its old membership is absent. The ledger mutation journal
@@ -301,9 +306,13 @@ complete set, never a new declaration with old results or a removed declaration
 with retained results.
 -> ssm/design/source-artifact-contract
 > A v1 manifest is exactly `schema_version`, `publication_id`, `parent_id`, `sources`, and `index`; the source map carries full source records and the index reference carries generation id, relative path, SHA-256, and chunk count.
+> Publication ids, non-null parent ids, and index generation ids are lowercase UUID hex; the index path is exactly `.scout-index/generations/<generation-id>`.
 > The unified index lives at `resources/.scout-index/generations/<id>` and has no reader `CURRENT`; the master publication is the sole reader pointer.
+> A valid source snapshot may bind a zero-chunk `EMPTY` index generation; its publication is valid and returns zero hits.
 > Candidate artifacts and index generations may exist privately before activation. The master pointer flips only after manifest, artifact digests, index digest, and source/snapshot bindings validate.
-> After source-control-plane activation, public search readers resolve one master publication pointer, not raw sources.json, artifact roots, and route-specific index CURRENT pointers independently.
+> A prepared publication id, parent, index id, and outcome projection are journaled before `CURRENT` flips; recovery never rebuilds or re-reports a different operation when that id is already current.
+> The one-way `ACTIVATED` marker is written under the shared transition lock before the first pointer flip. If that flip fails, its prepared journal/candidate remains for retry rather than permanently blocking bootstrap.
+> After source-control-plane activation, public search readers resolve one master publication pointer, not raw .scout-ledger.json, artifact roots, and route-specific index CURRENT pointers independently.
 > One immutable publication generation binds the Scout source-state snapshot, artifact generations, and indexed-material generation.
 > Candidate generations are unreachable until publication; initial cleanup retains prior complete generations conservatively.
 > The current master publication and strict checked-in configuration self-describe every Scout-store validity invariant; validation accumulates every violation before indexed answers are admitted or suppressed.
@@ -312,8 +321,9 @@ with retained results.
 > A stale staged candidate automatically rebases its source mutation onto the latest complete publication before retrying the short commit.
 > `resources/.scout-publications/CURRENT` atomically names one immutable, self-contained generation manifest; it is the only public search reader entrypoint.
 > Publication rebase continues until commit; interruption preserves the ledger intent so the settled recovery handoff resumes rather than abandons the valid staged mutation.
+> Source index candidates stage under `.scout-index-stage/<id>` and publication manifests under `.scout-publications-stage/<id>`; validation precedes a durable directory move into the immutable final generation root.
 ---
-[ssm/design/docs-index-entrypoints] Design the sole source-index entry point (notstarted)
+[ssm/design/docs-index-entrypoints] Design the sole source-index entry point (complete)
 Given the source publication boundary, define the one permitted path through
 which source chunks are built and published. A generic `resources/search.py`
 `--update` or `--rebuild`, a missing-CURRENT cold build during a direct CLI
@@ -352,45 +362,24 @@ whole-store validation the only gate before indexed answers.
 -> ssm/design/source-diagnostics
 -> ssm/design/source-hit-provenance
 -> ssm/design/source-publication-boundary
+> Every public source search revalidates the current master publication, config, artifact/index digest, and index manifest before returning hits.
+> The resident source worker reuses one fully tag-validated embeddings instance while the master publication id is unchanged; a pointer change retires it before opening the next generation.
+> Legacy reader requests take the shared transition lock and recheck activation immediately before legacy access; an already-running legacy worker rejects and exits after cutover.
+> Legacy writers retain the same transition lock for their process, so activation cannot race a mirror or legacy-ledger mutation.
 ---
-[ssm/design/source-lifecycle] Design source live-snapshot publication lifecycle (notstarted)
-Apply the state-space entropy ladder to artifact and index publication. A
-registered source has only two query-visible states: no live snapshot, or one
-committed live snapshot. A live snapshot is introduced only by a complete
-publication that includes its validated artifact and makes it searchable; the
-representation has no live variant for partial bytes, a staged candidate, an
-unindexed artifact, or an index entry without its artifact. Candidates remain
-outside corpus discovery and query-visible indexes until that publication.
+[ssm/design/source-lifecycle] Design source live-snapshot publication lifecycle (complete)
+Apply the state-space entropy ladder to artifact and index publication. A registered source has only two query-visible states: no live snapshot, or one committed live snapshot. A live snapshot is introduced only by a complete publication that includes its validated artifact and makes it searchable; the representation has no live variant for partial bytes, a staged candidate, an unindexed artifact, or an index entry without its artifact. Candidates remain outside corpus discovery and query-visible indexes until that publication.
 
-An explicit re-fetch or refresh creates a separate attempt, never a mutation
-of the current live snapshot. Failure or interruption leaves the prior live
-snapshot unchanged when one exists; for a source with no prior snapshot it
-leaves no live snapshot. For refresh selection, a registered source with no
-live snapshot is structurally absent regardless of TTL and is eligible for
-refresh-stale. A failed refresh with a usable prior snapshot produces a
-non-live attempt diagnostic record; ssm/design/attempt-diagnostics owns its
-storage, lifetime, and clearing behavior. It cannot become a query-visible
-source state. Removal commits to no live snapshot only when the source is no
-longer queryable. The owner decides the concrete
-state transition and outcome projection using the concrete publication boundary
-settled in ssm/design/source-publication-boundary. This task does not choose a
-second transaction mechanism; every reader must observe either the prior
-complete publication or the next complete publication, never a cross-artifact
-mixture.
-Diagnostics are a read-time projection of this resolution, not a third stored
-source state. A stale but otherwise validating current publication, or a failed
-private refresh attempt that leaves its committed snapshot valid, may produce a
-warning. Any failure to validate a declared current-publication invariant makes
-the whole Scout store invalid: it returns no indexed answers and the complete
-failure report. A reader admits no partial, candidate, unindexed, or
-artifact/index-mismatched material; it either admits the fully validated
-current publication or no indexed material. The downstream verification task proves
-that binary result under deterministic failures.
+An explicit re-fetch or refresh creates a separate attempt, never a mutation of the current live snapshot. Failure or interruption leaves the prior live snapshot unchanged when one exists; for a source with no prior snapshot it leaves no live snapshot. A failed first fetch of a new source records only its declaration with `snapshot: null` in the generic ledger and commits no publication; it is not reader-visible but is a registered absent target for `refresh-stale`. For refresh selection, a registered source with no live snapshot is structurally absent regardless of TTL and is eligible for refresh-stale. A failed refresh with a usable prior snapshot produces a non-live attempt diagnostic record; ssm/design/attempt-diagnostics owns its storage, lifetime, and clearing behavior. It cannot become a query-visible source state. Removal commits to no live snapshot only when the source is no longer queryable. The owner decides the concrete state transition and outcome projection using the concrete publication boundary settled in ssm/design/source-publication-boundary. This task does not choose a second transaction mechanism; every reader must observe either the prior complete publication or the next complete publication, never a cross-artifact mixture.
+Diagnostics are a read-time projection of this resolution, not a third stored source state. A stale but otherwise validating current publication, or a failed private refresh attempt that leaves its committed snapshot valid, may produce a warning. Any failure to validate a declared current-publication invariant makes the whole Scout store invalid: it returns no indexed answers and the complete failure report. A reader admits no partial, candidate, unindexed, or artifact/index-mismatched material; it either admits the fully validated current publication or no indexed material. The downstream verification task proves that binary result under deterministic failures.
 -> ssm/design/fresh-source-refetch
 -> ssm/design/source-publication-boundary
 -> ssm/design/source-registry
+> A failed first fetch persists only its failed new declaration as a no-snapshot ledger record, even in a multi-row batch; no batch row becomes reader-visible until a complete publication.
+> Ledger-only no-snapshot declarations survive unrelated publications in the ledger but are excluded from every publication unless that operation materializes them.
+> Refresh selects stale or no-snapshot declarations only after its recovery journal excludes competing source mutations.
 ---
-[ssm/design/attempt-diagnostics] Design non-live fetch-attempt diagnostics (notstarted)
+[ssm/design/attempt-diagnostics] Design non-live fetch-attempt diagnostics (complete)
 A failed refresh with a valid prior snapshot must remain visible as a warning
 on later public searches, but failures are not source snapshot states. Given the
 ledger and lifecycle contracts, design the non-live attempt record: its binding
@@ -402,8 +391,10 @@ to be actionable, then clears or changes only through an unambiguous later
 attempt outcome without changing the visible snapshot prematurely.
 -> ssm/design/source-lifecycle
 -> ssm/design/source-registry
+> A failed refresh with a prior live snapshot enters a durable journal `failed` phase carrying source, snapshot, and diagnostic detail; the warning record is persisted before that journal is deleted.
+> Recovery of a failed refresh journal performs the same warning-record handoff, so interruption cannot erase a valid-snapshot `REFRESH_FAILED` observation.
 ---
-[ssm/design/source-hit-provenance] Design source-to-hit provenance and filtering (notstarted)
+[ssm/design/source-hit-provenance] Design source-to-hit provenance and filtering (complete)
 Given the source publication lifecycle, define the stable binding carried by
 each indexed chunk and search hit: source identity plus the committed
 snapshot generation or manifest identity that produced it. Before ranking, the
@@ -424,10 +415,11 @@ fully valid store remains searchable.
 -> ssm/design/chunk-adapters
 -> ssm/design/source-lifecycle
 > Every v1 index tag carries `citation`, `source`, and `snapshot`; VINE tags add `vine_kind` and `vine_segment` without a second provenance sidecar.
-> The reader validates the master publication, artifact digests, index digest, source map, and index manifest source/snapshot map before calling either semantic or keyword search.
+> A live repository-local VINE path binds to exactly one source identity in a publication, making its path/task citation resolve one committed snapshot.
+> The reader validates the master publication, strict current config, artifact digests, index digest, source map, and index manifest source/snapshot map before calling either semantic or keyword search.
 ---
-[ssm/design/source-diagnostics] Design actionable source-health diagnostics (reviewing)
-Scout's canonical closed diagnostic code space extends the foundation codes unchanged. Source/materialization codes are `ORIGIN_INVALID`, `ORIGIN_NOT_FOUND`, `SOURCE_NAME_INVALID`, `SOURCE_ROW_INVALID`, `DESTINATION_DENIED`, `DESTINATION_RESOLUTION_FAILED`, `FETCH_CONNECT_FAILED`, `FETCH_REDIRECT_DENIED`, `FETCH_RESPONSE_LIMIT_EXCEEDED`, `FETCH_MIME_MISMATCH`, `FETCH_CHARSET_INVALID`, `FETCH_UTF8_INVALID`, and `MATERIALIZATION_FAILED`. Publication/store codes are `PUBLICATION_MISSING`, `PUBLICATION_MALFORMED`, `PUBLICATION_INTEGRITY_FAILED`, `INDEX_MISSING`, `INDEX_INTEGRITY_FAILED`, `SOURCE_BINDING_FAILED`, and `LEGACY_MIGRATION_REQUIRED`. Each code has exactly `{code,evidence,repair}` and code-specific evidence keys in the implementation registry. Warnings are separate typed values: `SNAPSHOT_STALE` and `REFRESH_FAILED`; they are allowed only when the current publication validates. No error path returns an untyped catch-all or parses display text back into state.
+[ssm/design/source-diagnostics] Design actionable source-health diagnostics (complete)
+Scout's canonical closed diagnostic code space extends the foundation codes unchanged. Source/materialization codes are `ORIGIN_INVALID`, `ORIGIN_NOT_FOUND`, `SOURCE_NAME_INVALID`, `SOURCE_ROW_INVALID`, `DESTINATION_DENIED`, `DESTINATION_RESOLUTION_FAILED`, `FETCH_CONNECT_FAILED`, `FETCH_REDIRECT_DENIED`, `FETCH_RESPONSE_LIMIT_EXCEEDED`, `FETCH_MIME_MISMATCH`, `FETCH_CHARSET_INVALID`, `FETCH_UTF8_INVALID`, and `MATERIALIZATION_FAILED`. Publication/store codes are `PUBLICATION_MISSING`, `PUBLICATION_MALFORMED`, `PUBLICATION_INTEGRITY_FAILED`, `INDEX_MISSING`, `INDEX_INTEGRITY_FAILED`, `SOURCE_BINDING_FAILED`, `LEGACY_MIGRATION_REQUIRED`, and `BOOTSTRAP_AFTER_ACTIVATION`. Each code has exactly `{code,evidence,repair}` and code-specific evidence keys in the implementation registry. Warnings are separate typed values: `SNAPSHOT_STALE` and `REFRESH_FAILED`; they are allowed only when the current publication validates. No error path returns an untyped catch-all or parses display text back into state.
 Accept: every source, materialization, publication, and store failure producer maps to one listed diagnostic code with required evidence/repair; an invalid store returns the complete collection unchanged; valid-store warnings remain typed and non-invalidating.
 -> ssm/design/attempt-diagnostics
 -> ssm/design/foundation-diagnostics
@@ -435,10 +427,12 @@ Accept: every source, materialization, publication, and store failure producer m
 -> ssm/design/source-hit-provenance
 -> ssm/design/source-lifecycle
 > Foundation codes remain unchanged; the listed source/materialization/publication codes complete the v1 closed diagnostic space.
-> Every diagnostic serializes exactly `{code,evidence,repair}` with code-specific evidence keys.
+> Every diagnostic serializes exactly `{code, evidence, repair}` with code-specific evidence keys.
+> Remote-derived protocol diagnostics use stable local evidence rather than reflected remote text before CLI/MCP serialization.
 > `SNAPSHOT_STALE` and `REFRESH_FAILED` are the only v1 warnings and are visible only for a valid current publication.
+> `BOOTSTRAP_AFTER_ACTIVATION` is the typed repair response for private initial-publication commands after the one-way cutover marker exists.
 ---
-[ssm/design/fetch-admission] Design remote fetch admission and resource policy (reviewing)
+[ssm/design/fetch-admission] Design remote fetch admission and resource policy (complete)
 Given the source descriptor-to-artifact contract, decide the rules enforced
 before Scout fetches a caller-supplied remote origin. HTTPS is the only
 accepted scheme. Redirects are limited to five and every target must retain
@@ -469,11 +463,13 @@ that was not reached.
 > Follow at most five redirects only when every redirect target remains HTTPS and has the original host.
 > Destination admission is evaluated separately for every remote connection hop; scheme and original-host checks alone are insufficient.
 > Require matching declared/observed text/plain or text/markdown MIME and UTF-8 charset; reject a mismatch before candidate staging.
+> A declared nonnegative Content-Length must exactly equal the streamed byte count; a short, excess, negative, or protocol-failed response is rejected before staging.
+> Remote protocol failure diagnostics use stable local evidence and never reflect remote status-line text.
 > Scheme and MIME rules are fixed; request timeout, redirect count, and response-byte cap live in checked-in Scout config.
 > One shared bounded staging writer enforces the configured response-byte limit, then removes incomplete staging on failure.
 > The initial generic remote profile is 60 seconds per request and 80 MiB per response.
 ---
-[ssm/design/https-single-url-materialization] Define one-URL HTTPS materialization (reviewing)
+[ssm/design/https-single-url-materialization] Define one-URL HTTPS materialization (complete)
 Each caller-provided URL is independently materialized as exactly one Scout
 source. The generic HTTPS fetcher may follow only the admitted redirect chain,
 then stages the final response as one artifact and emits its manifest. It does
@@ -488,7 +484,7 @@ every registered HTTPS source.
 > Redirect handling is transport for that one URL, not source expansion.
 > No catalog parsing, link discovery, crawl, or vendor-specific collection rule exists.
 ---
-[ssm/design/mime-representation] Design MIME-to-indexable representation (reviewing)
+[ssm/design/mime-representation] Design MIME-to-indexable representation (complete)
 Each source declares and validates a response MIME, but a successful fetch must
 also have one settled route into the indexed chunk pipeline. The initial allowed
 set is `text/plain` and `text/markdown`, with an absent charset interpreted as
@@ -509,7 +505,7 @@ actionable diagnostic before publication.
 > Both allowed types use the default text chunk adapter; no HTML, PDF, or other conversion is implied by this remote text profile. Legacy migration must explicitly represent or retire other material rather than route it through another source category.
 > MIME or encoding mismatch fails before candidate staging/publication.
 ---
-[ssm/design/legacy-docs-migration] Design migration of current indexed material (notstarted)
+[ssm/design/legacy-docs-migration] Design migration of current indexed material (complete)
 The current implementation has category-specific material paths: the Modal pin
 expands one llms.txt URL into hundreds of Markdown pages, the VS Code pin groups
 two distinct raw Markdown URLs beneath one ledger record, the paper manifest
@@ -538,7 +534,7 @@ discovery bypass is retired.
 -> ssm/design/source-publication-boundary
 -> ssm/design/source-registry
 ---
-[ssm/design/legacy-docs-precutover] Design source-bound initial publication (planning)
+[ssm/design/legacy-docs-precutover] Design source-bound initial publication (complete)
 
 After ssm/design/legacy-docs-migration produces the owner-confirmed retained
 declaration list, this task designs the private source-bound initial candidate.
@@ -572,27 +568,18 @@ lifecycle; and no deployed public route exposes both reader models.
 > Retained legacy artifacts are migration input only, never reader-visible source state.
 > The first fully source-bound publication activates the control-plane reader and replaces legacy public reader behavior without overlap.
 ---
-[ssm/design/legacy-docs-query-cutover] Design source-bound query cutover (notstarted)
-The current legacy runtime formats aggregate hits and warnings without the
-source/snapshot provenance required by the unified health gate. It is the
-pre-activation program outside the source control plane while
-ssm/design/legacy-docs-precutover stages the initial source-bound publication;
-no control-plane reader delegates to it or wraps its replies.
-At one activation boundary, every public query route moves directly to the
-master publication and its common health gate. Settle the deployment/routing
-boundary and removal of legacy reader behavior so no public route exposes both
-models. No public query may return an aggregate bridge reply or mix aggregate
-legacy hits with source-bound health validation.
-Accept: the owner confirms an atomic point at which current indexed material
-moves from the legacy runtime to a fully source-bound publication, and that
-after it no legacy aggregate reader, compatibility reply, or unprovenanced hit
-path remains, including through a control-plane delegation path.
+[ssm/design/legacy-docs-query-cutover] Design source-bound query cutover (complete)
+The current legacy runtime formats aggregate hits and warnings without the source/snapshot provenance required by the unified health gate. It is the pre-activation program outside the source control plane while ssm/design/legacy-docs-precutover stages the initial source-bound publication; no control-plane reader delegates to it or wraps its replies.
+At one activation boundary, every public query route moves directly to the master publication and its common health gate. The durable sibling `resources/.scout-publications/ACTIVATED` marker is written before the first `CURRENT` pointer flip and is never removed by the control plane. Compatibility aliases and legacy writer guards consult this marker, not `CURRENT`; after activation a missing or invalid master pointer returns source-store diagnostics and never falls back to aggregate legacy hits. Bootstrap and migration are private pre-activation paths and return `BOOTSTRAP_AFTER_ACTIVATION` after the marker exists. No public query may return an aggregate bridge reply or mix aggregate legacy hits with source-bound health validation.
+Accept: the owner confirms an atomic point at which current indexed material moves from the legacy runtime to a fully source-bound publication, and that after it no legacy aggregate reader, compatibility reply, or unprovenanced hit path remains, including through a control-plane delegation path.
 -> ssm/design/docs-index-entrypoints
 -> ssm/design/legacy-docs-migration
 -> ssm/design/legacy-docs-precutover
 -> ssm/design/source-hit-provenance
+> `ACTIVATED` is a durable one-way cutover marker written before the first master pointer flip; a missing `CURRENT` after it is an invalid source store, never a legacy fallback.
+> Bootstrap and migration are pre-activation-only operations; public proposal and refresh commands own later mutations.
 ---
-[ssm/design/fresh-source-refetch] Define direct fresh-source refetch behavior (notstarted)
+[ssm/design/fresh-source-refetch] Define direct fresh-source refetch behavior (complete)
 Given the settled source-operation identity, an `add` targeting an existing
 source is an explicit re-fetch request even when its TTL has not expired. A
 remove is target-only and never fetches. That behavior
@@ -610,7 +597,7 @@ snapshots.
 > refresh-stale remains stale/absent-only; no third public command is added.
 > A registered source with no live snapshot is absent and refresh-stale selects it.
 ---
-[ssm/design/vine-chunking] Design per-task chunking for vine files (planning)
+[ssm/design/vine-chunking] Design per-task chunking for vine files (complete)
 Given the chunk-type-adapter interface from ssm/design/chunk-adapters, design VINE's adapter for an already materialized declared VINE source: parse its local artifact into task blocks (reusing Bacchus's VINE semantics only as far as a structural split needs: use the declared delimiter when present, otherwise `---`, then recognize task and ref headers). The indexer must not need a live MCP vine_read call or a full VINE parser. Apply the bounded task representation settled in ssm/design/vine-task-length.
 Task citations are `<repo-relative-vine-path>#<task-id>#vine`, retaining an unambiguous file locator plus task id so a result can resolve through the settled repository-owned citation resolver even when VINE stems collide. This is the task resolver citation, not necessarily the unique index identity: long-task segments use distinct adapter index identities while sharing the one task citation. Ref blocks emit chunks as `<repo-relative-vine-path>#ref:<id>#vine`; their repository-owned resolution and test contract is designed in ssm/design/vine-citation-resolution rather than treating a ref proxy as a task. A ref chunk contains only its local proxy name and description. It never creates a source declaration, materializes a target, schedules target indexing, or derives target content. A referred VINE becomes indexable only through its own explicit source add row and materialization under ssm/design/source-origin-locator.
 -> ssm/design/chunk-adapters
@@ -688,8 +675,9 @@ malformed or absent target fails explicitly.
 > resources/vine.py owns the local structural parser and canonical citation resolver.
 > Canonical paths are normalized repo-relative .vine paths; task and ref targets are kind-specific.
 > The executable test invokes the local resolver directly, not vine_read or MCP.
+> Before parsing a source-bound committed VINE artifact, citation resolution enforces a 1 MiB input budget; an oversized artifact returns `SOURCE_BINDING_FAILED` without loading the full document. Returned citation text remains capped at 12,000 characters.
 ---
-[ssm/design/vine-corpus] Design VINE attachment to the unified source publication (planning)
+[ssm/design/vine-corpus] Design VINE attachment to the unified source publication (complete)
 VINE chunks are source material governed by the same provenance, refresh,
 validity, and publication contract as every other indexed material. The current
 workspace route is a legacy bypass and cannot establish a distinct reader or
@@ -714,9 +702,10 @@ label creates a separate corpus or publication surface.
 -> ssm/design/vine-chunking
 > VINE inventory is migration/audit input, not direct index intake or declaration discovery.
 > Add one concrete repository-local VINE origin per explicit source row; a glob never creates rows or fans out.
+> A live VINE repository path is unique per publication; a second source identity for the same path is rejected before materialization.
 > Dispatch only materialized declared VINE sources through the vine-task adapter, never generic word windows.
 ---
-[ssm/implement/vine-indexing] Implement VINE parsing and unified source wiring (notstarted)
+[ssm/implement/vine-indexing] Implement VINE parsing and unified source wiring (complete)
 Retain `resources/vine.py` as the shared settled local structural parser and canonical citation resolver, then use it to host the VINE adapter designed in ssm/design/vine-chunking and migrate only explicit declared, materialized VINE source artifacts from the legacy `workspace_chunks()` route into the generic source pipeline per ssm/design/vine-corpus. Hydrated self-citations resolve through this module, the same way any source citation resolves back to its source material. The indexer does not invoke MCP or require an ambient VS Code service; it does not treat a ref proxy as a task, and a ref must never create, materialize, or index its target.
 
 Add direct temporary-fixture resolver checks to `python -m scout.smoke` for task/ref citations plus malformed syntax, traversal/absolute path, missing file/id, and task/ref kind mismatch failures. Apply the settled bounded-task representation rather than relying on encoder truncation. Emit canonical adapter tags for every VINE segment; force a full source-index rebuild when upgrading from the prior text-only manifest schema, then verify that saved/reloaded index tags hydrate the resolving task/ref citations rather than raw unique index ids. Add a fixture proving a ref target remains absent from indexed material until that target is independently supplied by its own explicit source declaration and materialization.
@@ -729,7 +718,7 @@ Test task and ref projections above the encoder-safe bound so every emitted segm
 -> ssm/design/vine-task-length
 -> ssm/implement/source-control-plane
 ---
-[ssm/design/command-surface] Design the scout command surface (notstarted)
+[ssm/design/command-surface] Design the scout command surface (complete)
 Before any implementation starts, carefully design and encapsulate the two
 invocation surfaces: (1) a source proposal command -- validates a complete
 ordered batch of immutable-name `add` declarations and target-only `remove`
@@ -767,6 +756,8 @@ Accept: the owner confirms the settled two-command CLI + MCP contract before ssm
 -> ssm/design/source-lifecycle
 -> ssm/design/source-publication-boundary
 -> ssm/design/source-registry
+> The public ordered batch command is `propose`: CLI `python resources/source_cli.py propose <rows.json>` and MCP `source_propose`; it accepts only immutable-name add declarations and target-only remove rows.
+> `refresh-stale` is the distinct no-argument CLI and MCP command; both public commands return the shared control-plane result shape.
 ---
 [ssm/design/chunk-adapters] Design chunk-type adapters for scout (complete)
 Current code has three named route-specific chunk entrypoints. They are legacy
@@ -807,7 +798,7 @@ ssm/design/vine-chunking is finalized against it.
 > txtai serialized tags are authoritative metadata; a generation's manifest tracks metadata-aware incremental signatures.
 > The default adapter preserves current word-window citations; VINE registers as vine-task.
 ---
-[ssm/implement/source-control-plane] Implement the shared source control plane (started)
+[ssm/implement/source-control-plane] Implement the shared source control plane (complete)
 Implement the settled config reader, source orchestration, structured
 freshness state, and artifact-to-index lifecycle behind one local control-plane
 interface. It consumes the authoritative shared ledger writer and recovery API
@@ -878,7 +869,7 @@ deterministic fixture as exactly one source artifact through that same path.
 -> ssm/design/source-registry
 -> ssm/implement/ledger-access-boundary
 ---
-[ssm/implement/ledger-access-boundary] Implement authoritative ledger access boundary (started)
+[ssm/implement/ledger-access-boundary] Implement authoritative ledger access boundary (complete)
 Implement `resources/config.py` and strict loading of `resources/scout.json`,
 then implement the settled physical-ledger writer, locking, durable
 intent/recovery protocol, and migration of every current direct
@@ -900,7 +891,7 @@ exposed.
 -> ssm/design/scout-config
 -> ssm/design/source-registry
 ---
-[ssm/implement/legacy-docs-migration] Migrate current indexed material to unified sources (notstarted)
+[ssm/implement/legacy-docs-migration] Migrate current indexed material to unified sources (complete)
 Apply the exact disposition settled in ssm/design/legacy-docs-migration to every
 current material path. For every retained remote origin, create one declared
 source row with its settled MIME and publish it through the shared control plane
@@ -927,7 +918,7 @@ writer mutates the ledger directly.
 -> ssm/implement/freshness-presentation
 -> ssm/implement/source-control-plane
 ---
-[ssm/implement/add-source] Implement the add-source command (notstarted)
+[ssm/implement/add-source] Implement the add-source command (complete)
 Build the settled public source proposal command from
 ssm/implement/source-control-plane and ssm/design/command-surface: validate a
 complete ordered batch of immutable-name `add` declarations and target-only
@@ -945,7 +936,7 @@ lifecycle.
 -> ssm/implement/legacy-docs-migration
 -> ssm/implement/source-control-plane
 ---
-[ssm/implement/refresh-stale] Implement the refresh-stale command (notstarted)
+[ssm/implement/refresh-stale] Implement the refresh-stale command (complete)
 Build the refresh command: no source argument, obtain the settled structured
 TTL-expired or absent selection from the shared control plane (including a
 registered source with no live snapshot), re-fetch each source through its
@@ -960,7 +951,7 @@ an MCP tool.
 -> ssm/implement/legacy-docs-migration
 -> ssm/implement/source-control-plane
 ---
-[ssm/implement/onboarding-migration] Migrate source onboarding references (notstarted)
+[ssm/implement/onboarding-migration] Migrate source onboarding references (complete)
 After both public source commands exist, audit the repository's README,
 Scout-facing descriptions, command examples, and other user-facing guidance.
 Replace instructions that tell a user to create or invoke a vendor-specific
@@ -973,7 +964,7 @@ onboarding instruction that requires a new bespoke vendor fetch script.
 -> ssm/implement/legacy-docs-migration
 -> ssm/implement/refresh-stale
 ---
-[ssm/implement/freshness-presentation] Implement source health gate and freshness presentation (notstarted)
+[ssm/implement/freshness-presentation] Implement source health gate and freshness presentation (complete)
 Implement the shared public-search validation gate and presentation from the
 settled source-health diagnostic and legacy-docs query-cutover contract. Apply
 it to every public search entry point: normal CLI, JSON CLI, and the resident
@@ -1001,22 +992,24 @@ command.
 -> ssm/design/source-hit-provenance
 -> ssm/implement/source-control-plane
 ---
-[ssm/design/scout-config] Design where scout's own operational config lives (reviewing)
-Scout operational configuration lives in checked-in `resources/scout.json`, separate from generic source data in `sources.json`. Its exact v1 JSON object is:
+[ssm/design/scout-config] Design where scout's own operational config lives (complete)
+Scout operational configuration lives in checked-in `resources/scout.json`, separate from ignored runtime source data in `.scout-ledger.json` and the tracked pre-activation freshness file `sources.json`. Its exact v1 JSON object is:
 ```
-{"schema_version":1,"ledger":{"lock_wait_seconds":30,"lock_poll_milliseconds":100},"fetch":{"request_timeout_seconds":60,"max_redirects":5,"max_response_bytes":83886080}}
+{"schema_version":1,"ledger":{"lock_wait_seconds":30,"lock_poll_milliseconds":100},"fetch":{"request_timeout_seconds":60,"max_redirects":5,"max_response_bytes":83886080},"repo_files":{"publishable_paths":["README.md","localmodal.vine","human-owned-spec/initial-spec.md","proposals/scout-source-management.vine","proposals/scout-vocabulary.md","resources/papers.md","scout/README.md"]}}
 ```
-The root keys are exactly `schema_version`, `ledger`, and `fetch`; `ledger` and `fetch` have exactly the displayed keys. Every numeric value is an integer rather than bool. `schema_version` is exactly 1; wait, poll, timeout, and response bytes are positive; redirects are nonnegative; and `lock_poll_milliseconds <= lock_wait_seconds * 1000`. Missing, malformed, unknown-key, wrong-type, and invalid-domain cases return the foundation typed diagnostics. The source control plane, search worker, and CLI/MCP wrappers consume the same parsed configuration; environment variables and proxy settings do not override it. Destination policy has no v1 config fields.
-Accept: config fixtures prove the exact nested shape and every rejection domain, return foundation diagnostics without defaults, and expose the parsed object unchanged to every consumer.
+The root keys are exactly `schema_version`, `ledger`, `fetch`, and `repo_files`; each nested object has exactly the displayed keys. `repo_files.publishable_paths` is the exact authorization allowlist for v1 `repo-file` origins: each entry is a unique normalized non-hidden repo-relative POSIX path. Every numeric value is an integer rather than bool. `schema_version` is exactly 1; wait, poll, timeout, and response bytes are positive; redirects are nonnegative; and `lock_poll_milliseconds <= lock_wait_seconds * 1000`. Missing, malformed, unknown-key, wrong-type, and invalid-domain cases return the foundation typed diagnostics. The source control plane, search worker, and CLI/MCP wrappers consume the same parsed configuration; environment variables and proxy settings do not override it. Destination policy has no v1 config fields.
+Accept: config fixtures prove the exact nested shape and every rejection domain, return foundation diagnostics without defaults, expose the parsed object unchanged to every consumer, and reject a hidden or unlisted repository-file path before materialization.
 -> ssm/design/fetch-admission
 -> ssm/design/foundation-diagnostics
 -> ssm/design/ledger-access-boundary
 -> ssm/design/remote-destination-admission
-> V1 config shape is exactly `schema_version`, `ledger`, and `fetch` with the nested keys shown in the task description; unknown keys are rejected at every level.
+> V1 config shape is exactly `schema_version`, `ledger`, `fetch`, and `repo_files` with the nested keys shown in the task description; unknown keys are rejected at every level.
+> `repo_files.publishable_paths` is the exact v1 authorization list for `repo-file` origins; entries are unique normalized non-hidden repo-relative POSIX paths.
 > Config numerics are integers not bool; wait/poll/timeout/bytes are positive, redirects are nonnegative, and poll is no greater than wait in milliseconds.
+> Every public source-control operation reloads and validates the checked-in config before it admits hits or mutates state; resident workers return its typed diagnostics rather than retaining a stale valid configuration.
 > V1 destination policy has no config fields; configuration and proxy environment variables never override the checked-in object.
 ---
-[ssm/verify/source-management] Verify source-management failure and recovery behavior (notstarted)
+[ssm/verify/source-management] Verify source-management failure and recovery behavior (complete)
 Exercise the settled contract with deterministic local fixtures rather than
 live vendor traffic. Cover interrupted ledger intent recovery for descriptor
 updates and removal, a failed fetch that leaves no partial artifact looking
@@ -1112,24 +1105,34 @@ shows no command reports searchable success before the source is searchable.
 -> ssm/implement/ledger-access-boundary
 -> ssm/implement/legacy-docs-migration
 -> ssm/implement/refresh-stale
+> Smoke coverage forces an index-generation failure during stale refresh and proves `REFRESH_FAILED` is persisted while the prior valid hit remains available.
+> Smoke coverage calls legacy `load_or_build` directly after activation and proves no legacy `CURRENT` pointer is created.
+> Smoke coverage exercises an oversized committed VINE citation and proves it returns `SOURCE_BINDING_FAILED` before parsing.
 ---
-[ssm/design/source-origin-locator] Design unified source-origin locator and reconciliation (reviewing)
-One Scout source declaration carries an `origin` object with exactly one of two v1 shapes: `{"kind":"https","url":"https://..."}` or `{"kind":"repo-file","path":"relative/posix/path"}`. `https` has exactly `kind` and `url`; URL parsing rejects credentials, fragments, non-HTTPS schemes, absent hosts, and noncanonical textual forms. `repo-file` has exactly `kind` and `path`; its path is normalized repo-relative POSIX syntax, has no absolute/drive/traversal component, resolves beneath the repository root without a symlink/reparse escape, and names one regular file. A source declaration never carries a glob. `ttl_days` is either null for immutable material or a positive integer. Reconciliation consumes one explicit row and materializes only that locator; inventory globs remain migration/audit input and never create rows or fan out.
-Accept: strict parser fixtures accept only the two shapes, reject locator ambiguity/escape/discovery, and show that each accepted locator materializes one reproducible source snapshot.
+[ssm/design/source-origin-locator] Design unified source-origin locator and reconciliation (complete)
+One Scout source declaration carries an `origin` object with exactly one of two v1 shapes: `{"kind":"https","url":"https://..."}` or `{"kind":"repo-file","path":"relative/posix/path"}`. `https` has exactly `kind` and `url`; URL parsing rejects credentials, fragments, non-HTTPS schemes, absent hosts, and noncanonical textual forms. `repo-file` has exactly `kind` and `path`; its path is normalized repo-relative POSIX syntax, has no absolute/drive/traversal/hidden component, appears exactly in checked-in `repo_files.publishable_paths`, resolves beneath the repository root without a symlink/reparse escape, and names one regular file. A source declaration never carries a glob. `ttl_days` is either null for immutable material or a positive integer. Reconciliation consumes one explicit row and materializes only that locator; inventory globs remain migration/audit input and never create rows or fan out.
+Accept: strict parser fixtures accept only the two shapes, reject locator ambiguity/escape/discovery or an unallowlisted local path, and show that each accepted locator materializes one reproducible source snapshot.
 > V1 origin locators are structured objects: `https` with `url`, or `repo-file` with repo-relative `path`; unknown keys and kinds are rejected.
-> `repo-file` resolves one regular file beneath the repository root after symlink/reparse resolution; globbing remains audit-only.
+> `repo-file` resolves one regular file beneath the repository root after symlink/reparse resolution and must appear exactly in checked-in `repo_files.publishable_paths`; globbing remains audit-only.
 > `ttl_days` is null for immutable material or a positive integer; reconciliation consumes one explicit declaration and never discovers declarations.
 ---
-[ssm/design/ledger-publication-recovery-handoff] Design ledger-publication recovery handoff (reviewing)
-The generic ledger keeps one sibling journal and one generic executor lock at `sources.json.recovery.lock`. A caller detecting a journal first acquires the recovery executor lock under the configured wait/poll policy, then under the short ledger lock claims the journal by its immutable `operation_id` and records a durable phase. The executor lock, not the ledger lock, remains held while materialization, candidate persistence, index construction, and publication rebase run. A non-owner waits for journal disappearance or returns `LEDGER_BUSY`; it never serves a ledger view that conflicts with the journal. OS release of the executor lock after process death permits the next claimant to validate/reuse a persisted candidate manifest or rematerialize it if invalid. The journal records operation id, desired mutation, phase, candidate reference/digest when staged, and base/current publication identity. Publication is committed under the short publication lock; only after the master publication reflects the desired source state does the executor apply the ledger mutation and delete the journal under the short ledger lock. A claimant validates operation id/phase before every commit, fencing a stale claimant.
+[ssm/design/ledger-publication-recovery-handoff] Design ledger-publication recovery handoff (complete)
+The ignored generic ledger keeps one sibling journal and one generic executor lock at `.scout-ledger.json.recovery.lock`. A caller detecting a journal first acquires the recovery executor lock under the configured wait/poll policy, then under the short ledger lock claims the journal by its immutable `operation_id` and records a durable phase. The executor lock, not the ledger lock, remains held while materialization, candidate persistence, index construction, and publication rebase run. A non-owner waits for journal disappearance or returns `LEDGER_BUSY`; it never serves a ledger view that conflicts with the journal. OS release of the executor lock after process death permits the next claimant to validate/reuse a persisted candidate manifest or rematerialize it if invalid. The journal records operation id, desired mutation, phase, candidate reference/digest when staged, and base/current publication identity. Publication is committed under the short publication lock; only after the master publication reflects the desired source state does the executor apply the ledger mutation and delete the journal under the short ledger lock. A claimant validates operation id/phase before every commit, fencing a stale claimant.
 Accept: deterministic concurrent/crash fixtures prove one executor performs external work, a crashed executor can be taken over with a valid staged candidate, stale claimants cannot commit, and journal deletion follows both publication and ledger agreement.
 -> ssm/design/ledger-access-boundary
 -> ssm/design/source-publication-boundary
 > A generic OS-held recovery executor lock serializes external recovery work; the ledger lock is never held across that work.
+> A caller creates and claims a new journal under the same recovery executor lock, so no other claimant can execute its batch between intent creation and ownership.
+> Each committed source snapshot is journaled before its immutable artifact move; recovery reclaims a partial snapshot set before rematerializing it.
+> Before a master-pointer flip, the journal durably carries the prepared publication id, parent id, index id, and final per-row statuses alongside candidate snapshots.
+> If that prepared id already names `CURRENT`, recovery completes only the ledger and returns its stored outcomes; if it lost the flip, recovery removes the private prepared publication/index and rebases the retained snapshots. A missing private prepared manifest is also cleanup/rebase, not a permanent recovery failure.
 > The journal persists immutable operation id, desired mutation, durable phase, candidate reference/digest, and publication identity; claim validation fences stale executors.
+> Synchronous candidate/index/publication failures remove private candidates and discard their journal; only process interruption leaves a journal for recovery.
 > Publish first, then apply ledger state and delete the journal only after publication/ledger agreement; non-owners wait or receive `LEDGER_BUSY`.
+> Durable replacement/deletion uses Windows write-through namespace operations or POSIX file/directory fsync before the next state transition.
+> For refresh-stale, a generic private failure including index or publication construction retains its journal until `REFRESH_FAILED` is recorded; the valid prior snapshot remains queryable before cleanup.
 ---
-[ssm/design/remote-destination-admission] Design remote destination admission (reviewing)
+[ssm/design/remote-destination-admission] Design remote destination admission (complete)
 V1 remote destination admission is fixed, not configurable: Scout ignores proxy configuration and connects only directly. For every origin and redirect hop, a literal IP is parsed directly and a hostname is resolved once using `getaddrinfo`; every resolved candidate address must be `ipaddress.is_global`. A resolution with no addresses or any non-global address is denied. The fetcher pins the TCP connection to one approved resolved address, uses the URL hostname for TLS SNI and the Host header, and repeats resolution/admission for every redirect hop. It never lets the HTTP stack re-resolve a hostname after admission. `DESTINATION_DENIED` evidence includes origin host, candidate address when present, and denial reason; `DESTINATION_RESOLUTION_FAILED` and `FETCH_CONNECT_FAILED` remain typed source diagnostics. No destination fields are added to v1 Scout config.
 Accept: deterministic fixtures prove literal/local, mixed-answer DNS, DNS-change, redirect-hop, and proxy-environment cases cannot connect to an unadmitted address, while an approved pinned address succeeds with hostname TLS.
 -> ssm/design/source-origin-locator
@@ -1137,7 +1140,7 @@ Accept: deterministic fixtures prove literal/local, mixed-answer DNS, DNS-change
 > Every connection is pinned to an admitted address while preserving original-host TLS SNI and Host header; each redirect hop re-resolves and revalidates.
 > Destination policy adds no v1 config fields; denied/resolution/connect outcomes use typed diagnostics.
 ---
-[ssm/design/foundation-diagnostics] Design foundation diagnostics for config and ledger (reviewing)
+[ssm/design/foundation-diagnostics] Design foundation diagnostics for config and ledger (complete)
 Foundation diagnostics are the typed bootstrap boundary for strict configuration and generic ledger access. Every diagnostic is a serializable value with exactly `code`, `evidence`, and `repair`; display rendering is not state. The initial closed foundation code set is `CONFIG_MISSING`, `CONFIG_MALFORMED`, `CONFIG_UNKNOWN_KEY`, `CONFIG_WRONG_TYPE`, `CONFIG_INVALID_VALUE`, `LEDGER_BUSY`, `LEDGER_MALFORMED`, `LEDGER_JOURNAL_MALFORMED`, and `LEDGER_RECOVERY_FAILED`. Each code fixes its evidence keys and repair instruction in the implementation registry. `ScoutDiagnosticsError` may transport one or more values internally, but no foundation path raises or returns an untyped string error. ssm/design/source-diagnostics extends this same code/payload boundary for source/publication variants; it does not translate foundation diagnostics.
 Accept: config and ledger code can return only the listed typed foundation diagnostics, and later public validation can aggregate those values unchanged with the completed source diagnostic union.
 > Foundation diagnostic payload is exactly `{code, evidence, repair}`; rendered text is derived only at CLI/MCP presentation.

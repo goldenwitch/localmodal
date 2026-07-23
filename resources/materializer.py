@@ -18,6 +18,7 @@ from urllib.parse import urljoin, urlsplit, urlunsplit
 
 from config import ScoutConfig
 from diagnostics import DiagnosticCode, ScoutDiagnosticsError, diagnostic
+from durable import fsync_directory, replace as durable_replace
 from source_model import (
     HttpsOrigin,
     RepoFileOrigin,
@@ -99,10 +100,59 @@ class Materializer:
         except ImportError:
             return ssl.create_default_context()
 
-    def materialize(self, declaration: SourceDeclaration) -> StagedCandidate:
+    def materialize(
+        self,
+        declaration: SourceDeclaration,
+        *,
+        operation_id: str | None = None,
+    ) -> StagedCandidate:
         if hasattr(declaration.origin, "path"):
-            return self._materialize_repo_file(declaration)
-        return self._materialize_https(declaration)
+            return self._materialize_repo_file(declaration, operation_id=operation_id)
+        return self._materialize_https(declaration, operation_id=operation_id)
+
+    def import_file(
+        self,
+        declaration: SourceDeclaration,
+        import_path: Path,
+        evidence_path: str,
+        *,
+        operation_id: str | None = None,
+    ) -> StagedCandidate:
+        """Privately import one legacy file into a declared source during activation only."""
+        try:
+            data = import_path.read_bytes()
+        except OSError as exc:
+            raise ScoutDiagnosticsError(
+                (
+                    diagnostic(
+                        DiagnosticCode.MATERIALIZATION_FAILED,
+                        source=declaration.name,
+                        detail=f"legacy import {type(exc).__name__}: {exc}",
+                    ),
+                )
+            ) from exc
+        if len(data) > self.config.fetch.max_response_bytes:
+            raise ScoutDiagnosticsError(
+                (
+                    diagnostic(
+                        DiagnosticCode.FETCH_RESPONSE_LIMIT_EXCEEDED,
+                        url=evidence_path,
+                        limit_bytes=self.config.fetch.max_response_bytes,
+                    ),
+                )
+            )
+        self._validate_text(data, declaration.mime, declaration.mime, evidence_path)
+        return self._stage(
+            declaration,
+            data,
+            observed_mime=declaration.mime,
+            origin_evidence={
+                "kind": "legacy-import",
+                "path": evidence_path,
+                "declared_origin": self._declared_origin_evidence(declaration),
+            },
+            operation_id=operation_id,
+        )
 
     def admit_destination(self, host: str, port: int) -> tuple[Destination, ...]:
         """Resolve once and reject any non-global candidate before connecting."""
@@ -156,7 +206,12 @@ class Materializer:
             admitted.append(Destination(host=host, port=port, address=str(parsed)))
         return tuple(admitted)
 
-    def _materialize_repo_file(self, declaration: SourceDeclaration) -> StagedCandidate:
+    def _materialize_repo_file(
+        self,
+        declaration: SourceDeclaration,
+        *,
+        operation_id: str | None,
+    ) -> StagedCandidate:
         origin = declaration.origin
         path_value = getattr(origin, "path", None)
         if not isinstance(path_value, str):
@@ -169,7 +224,11 @@ class Materializer:
                     ),
                 )
             )
-        path = resolve_repo_file(RepoFileOrigin(path_value), self.repository_root)
+        path = resolve_repo_file(
+            RepoFileOrigin(path_value),
+            self.repository_root,
+            publishable_paths=self.config.repo_files.publishable_paths,
+        )
         try:
             data = path.read_bytes()
         except OSError as exc:
@@ -198,9 +257,15 @@ class Materializer:
             data,
             observed_mime=declaration.mime,
             origin_evidence={"kind": "repo-file", "path": origin.path},
+            operation_id=operation_id,
         )
 
-    def _materialize_https(self, declaration: SourceDeclaration) -> StagedCandidate:
+    def _materialize_https(
+        self,
+        declaration: SourceDeclaration,
+        *,
+        operation_id: str | None,
+    ) -> StagedCandidate:
         origin = declaration.origin
         url_value = getattr(origin, "url", None)
         if not isinstance(url_value, str):
@@ -217,13 +282,16 @@ class Materializer:
         original_host = self._url_host(current_url)
         redirects = 0
         while True:
-            parsed = urlsplit(current_url)
-            host = parsed.hostname
+            try:
+                parsed = urlsplit(current_url)
+                host = parsed.hostname
+                port = parsed.port or 443
+            except ValueError as exc:
+                raise self._redirect_denied(current_url, "invalid URL or port") from exc
             if not host:
                 raise self._redirect_denied(current_url, "missing host")
             if parsed.scheme != "https" or host.casefold() != original_host.casefold():
                 raise self._redirect_denied(current_url, "redirect must retain https and original host")
-            port = parsed.port or 443
             destination = self.admit_destination(host, port)[0]
             response = self._request(current_url, destination)
             try:
@@ -259,6 +327,7 @@ class Materializer:
                         "host": host,
                         "address": destination.address,
                     },
+                    operation_id=operation_id,
                 )
             finally:
                 response.close()
@@ -266,6 +335,9 @@ class Materializer:
     def _request(self, url: str, destination: Destination):
         parsed = urlsplit(url)
         target = urlunsplit(("", "", parsed.path or "/", parsed.query, ""))
+        host_header = f"[{destination.host}]" if ":" in destination.host else destination.host
+        if destination.port != 443:
+            host_header = f"{host_header}:{destination.port}"
         try:
             connection = self._connection_factory(
                 destination.host,
@@ -274,18 +346,18 @@ class Materializer:
                 self.config.fetch.request_timeout_seconds,
                 self._context,
             )
-            connection.request("GET", target, headers={"Host": destination.host, "User-Agent": USER_AGENT})
+            connection.request("GET", target, headers={"Host": host_header, "User-Agent": USER_AGENT})
             response = connection.getresponse()
             response._scout_connection = connection
             return response
-        except OSError as exc:
+        except (OSError, http.client.HTTPException) as exc:
             raise ScoutDiagnosticsError(
                 (
                     diagnostic(
                         DiagnosticCode.FETCH_CONNECT_FAILED,
                         host=destination.host,
                         address=destination.address,
-                        detail=f"{type(exc).__name__}: {exc}",
+                        detail="HTTPS connection failed",
                     ),
                 )
             ) from exc
@@ -310,6 +382,16 @@ class Materializer:
                         ),
                     )
                 ) from exc
+            if length < 0:
+                raise ScoutDiagnosticsError(
+                    (
+                        diagnostic(
+                            DiagnosticCode.MATERIALIZATION_FAILED,
+                            source=url,
+                            detail="negative Content-Length",
+                        ),
+                    )
+                )
             if length > self.config.fetch.max_response_bytes:
                 raise ScoutDiagnosticsError(
                     (
@@ -322,22 +404,45 @@ class Materializer:
                 )
         chunks = []
         total = 0
-        while True:
-            chunk = response.read(min(64 * 1024, self.config.fetch.max_response_bytes + 1))
-            if not chunk:
-                break
-            total += len(chunk)
-            if total > self.config.fetch.max_response_bytes:
-                raise ScoutDiagnosticsError(
-                    (
-                        diagnostic(
-                            DiagnosticCode.FETCH_RESPONSE_LIMIT_EXCEEDED,
-                            url=url,
-                            limit_bytes=self.config.fetch.max_response_bytes,
-                        ),
+        try:
+            while True:
+                chunk = response.read(min(64 * 1024, self.config.fetch.max_response_bytes + 1))
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > self.config.fetch.max_response_bytes:
+                    raise ScoutDiagnosticsError(
+                        (
+                            diagnostic(
+                                DiagnosticCode.FETCH_RESPONSE_LIMIT_EXCEEDED,
+                                url=url,
+                                limit_bytes=self.config.fetch.max_response_bytes,
+                            ),
+                        )
                     )
+                chunks.append(chunk)
+        except ScoutDiagnosticsError:
+            raise
+        except (OSError, http.client.HTTPException) as exc:
+            raise ScoutDiagnosticsError(
+                (
+                    diagnostic(
+                        DiagnosticCode.MATERIALIZATION_FAILED,
+                        source=url,
+                        detail="response read failed",
+                    ),
                 )
-            chunks.append(chunk)
+            ) from exc
+        if declared_length is not None and total != length:
+            raise ScoutDiagnosticsError(
+                (
+                    diagnostic(
+                        DiagnosticCode.MATERIALIZATION_FAILED,
+                        source=url,
+                        detail=f"Content-Length mismatch: declared {length}, received {total}",
+                    ),
+                )
+            )
         return b"".join(chunks), self._content_type(response, url)
 
     @staticmethod
@@ -397,7 +502,11 @@ class Materializer:
     @staticmethod
     def _normal_redirect(current_url: str, location: str) -> str:
         candidate = urljoin(current_url, location)
-        parsed = urlsplit(candidate)
+        try:
+            parsed = urlsplit(candidate)
+            parsed.port
+        except ValueError as exc:
+            raise Materializer._redirect_denied(candidate, "invalid URL or port") from exc
         if parsed.username is not None or parsed.password is not None or parsed.fragment:
             raise ScoutDiagnosticsError(
                 (
@@ -423,14 +532,30 @@ class Materializer:
         *,
         observed_mime: str,
         origin_evidence: dict[str, object],
+        operation_id: str | None,
     ) -> StagedCandidate:
         snapshot_id = uuid.uuid4().hex
         root = artifact_root(self.resources_root, declaration.name)
-        staging_dir = root / "staging" / snapshot_id
+        if operation_id is None:
+            staging_dir = root / "staging" / snapshot_id
+        else:
+            staging_dir = (
+                self.resources_root
+                / ".scout-staging"
+                / operation_id
+                / root.name
+                / "generations"
+                / snapshot_id
+            )
         content_path = staging_dir / "content"
         staging_dir.mkdir(parents=True, exist_ok=False)
+        fsync_directory(staging_dir.parent)
         try:
-            content_path.write_bytes(data)
+            with content_path.open("wb") as file:
+                file.write(data)
+                file.flush()
+                os.fsync(file.fileno())
+            fsync_directory(staging_dir)
             digest = hashlib.sha256(data).hexdigest()
             snapshot = SourceSnapshot(
                 snapshot_id=snapshot_id,
@@ -454,11 +579,21 @@ class Materializer:
                 staging_dir.rmdir()
             raise
 
+    @staticmethod
+    def _declared_origin_evidence(declaration: SourceDeclaration) -> dict[str, str]:
+        origin = declaration.origin
+        url = getattr(origin, "url", None)
+        if isinstance(url, str):
+            return {"kind": "https", "url": url}
+        path = getattr(origin, "path", None)
+        if isinstance(path, str):
+            return {"kind": "repo-file", "path": path}
+        return {"kind": "unknown"}
+
 
 def commit_candidate(candidate: StagedCandidate, resources_root: Path) -> Path:
     """Move a validated private candidate into its immutable snapshot generation."""
     destination = resources_root / candidate.snapshot.artifact_path
-    destination.parent.mkdir(parents=True, exist_ok=True)
     if destination.exists():
         raise ScoutDiagnosticsError(
             (
@@ -469,9 +604,40 @@ def commit_candidate(candidate: StagedCandidate, resources_root: Path) -> Path:
                 ),
             )
         )
-    os.replace(candidate.content_path, destination)
-    candidate.staging_dir.rmdir()
-    staging_parent = candidate.staging_dir.parent
-    if not any(staging_parent.iterdir()):
-        staging_parent.rmdir()
+    operation_staging = resources_root / ".scout-staging"
+    try:
+        operation_relative = candidate.staging_dir.relative_to(operation_staging)
+    except ValueError:
+        operation_relative = None
+    if operation_relative is not None:
+        source_root = candidate.staging_dir.parents[1]
+        destination_root = destination.parents[2]
+        destination_generations = destination.parent.parent
+        if not destination_root.exists():
+            durable_replace(source_root, destination_root)
+        elif not destination_generations.exists():
+            durable_replace(source_root / "generations", destination_generations)
+        else:
+            durable_replace(candidate.staging_dir, destination.parent)
+        _remove_empty_ancestors(
+            source_root if source_root.exists() else source_root.parent,
+            operation_staging,
+        )
+    else:
+        destination.parent.parent.mkdir(parents=True, exist_ok=True)
+        fsync_directory(destination.parents[2])
+        fsync_directory(destination.parent.parent)
+        durable_replace(candidate.staging_dir, destination.parent)
+        _remove_empty_ancestors(candidate.staging_dir.parent, candidate.staging_dir.parents[1])
     return destination
+
+
+def _remove_empty_ancestors(path: Path, stop: Path) -> None:
+    current = path
+    while current != stop:
+        try:
+            current.rmdir()
+        except OSError:
+            return
+        fsync_directory(current.parent)
+        current = current.parent

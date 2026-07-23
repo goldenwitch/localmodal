@@ -12,12 +12,13 @@ from pathlib import Path
 from typing import Mapping
 
 from config import ScoutConfig
+from durable import fsync_directory, replace as durable_replace, unlink as durable_unlink
 from diagnostics import DiagnosticCode, ScoutDiagnosticsError, diagnostic, foundation_diagnostic
 from source_model import LEDGER_SCHEMA_VERSION, SourceRecord, parse_record, record_to_json
 
 
 JOURNAL_SCHEMA_VERSION = 1
-JOURNAL_PHASES = frozenset(("pending", "claimed", "staged", "published"))
+JOURNAL_PHASES = frozenset(("pending", "claimed", "staged", "failed", "published"))
 
 
 @dataclass(frozen=True)
@@ -139,6 +140,25 @@ class RecoveryLease(AbstractContextManager["RecoveryLease"]):
             self.journal = updated
             return updated
 
+    def replace_mutation(self, mutation: Mapping[str, object]) -> Journal:
+        """Persist a finalized mutation plan before the lease performs external work."""
+        if not isinstance(mutation, Mapping):
+            raise ValueError("journal mutation must be a mapping")
+        with self._ledger._ledger_lock():
+            current = self._ledger._read_journal_unlocked()
+            self._assert_claim(current)
+            updated = Journal(
+                operation_id=current.operation_id,
+                mutation=dict(mutation),
+                phase=current.phase,
+                claim_id=self.claim_id,
+                candidate=current.candidate,
+                publication_id=current.publication_id,
+            )
+            self._ledger._write_journal_unlocked(updated)
+            self.journal = updated
+            return updated
+
     def complete(self, records: Mapping[str, SourceRecord], publication_id: str) -> None:
         """Persist ledger state only after the caller has committed publication_id."""
         with self._ledger._ledger_lock():
@@ -155,14 +175,55 @@ class RecoveryLease(AbstractContextManager["RecoveryLease"]):
                     )
                 )
             self._ledger._write_state_unlocked(LedgerState(records=dict(records)))
-            self._ledger.journal_path.unlink(missing_ok=True)
+            durable_unlink(self._ledger.journal_path)
 
     def discard(self) -> None:
         """Discard a private failed operation without mutating the live ledger."""
         with self._ledger._ledger_lock():
             current = self._ledger._read_journal_unlocked()
             self._assert_claim(current)
-            self._ledger.journal_path.unlink(missing_ok=True)
+            durable_unlink(self._ledger.journal_path)
+
+    def read_committed_state(self) -> LedgerState:
+        """Read the last committed state while retaining this journal's recovery claim."""
+        with self._ledger._ledger_lock():
+            current = self._ledger._read_journal_unlocked()
+            self._assert_claim(current)
+            return self._ledger._read_state_unlocked()
+
+    def register_absent_source(self, record: SourceRecord) -> None:
+        """Retain a failed first-fetch declaration without making it reader-visible."""
+        if record.snapshot is not None:
+            raise ValueError("only no-snapshot records may be registered without publication")
+        with self._ledger._ledger_lock():
+            current = self._ledger._read_journal_unlocked()
+            self._assert_claim(current)
+            if current.phase != "claimed":
+                raise ScoutDiagnosticsError(
+                    (
+                        foundation_diagnostic(
+                            DiagnosticCode.LEDGER_RECOVERY_FAILED,
+                            operation_id=current.operation_id,
+                            detail="absent source registration must precede candidate staging",
+                        ),
+                    )
+                )
+            state = self._ledger._read_state_unlocked()
+            name = record.declaration.name
+            if name in state.records:
+                raise ScoutDiagnosticsError(
+                    (
+                        foundation_diagnostic(
+                            DiagnosticCode.LEDGER_RECOVERY_FAILED,
+                            operation_id=current.operation_id,
+                            detail="absent source registration already exists",
+                        ),
+                    )
+                )
+            records = dict(state.records)
+            records[name] = record
+            self._ledger._write_state_unlocked(LedgerState(records=records))
+            durable_unlink(self._ledger.journal_path)
 
     def _assert_claim(self, current: Journal | None) -> None:
         if current is None or current.operation_id != self.journal.operation_id or current.claim_id != self.claim_id:
@@ -186,10 +247,10 @@ class Ledger:
     def __init__(self, resources_root: Path, config: ScoutConfig) -> None:
         self.resources_root = resources_root
         self.config = config
-        self.path = resources_root / "sources.json"
-        self.journal_path = resources_root / "sources.json.journal"
-        self.lock_path = resources_root / "sources.json.lock"
-        self.recovery_lock_path = resources_root / "sources.json.recovery.lock"
+        self.path = resources_root / ".scout-ledger.json"
+        self.journal_path = resources_root / ".scout-ledger.json.journal"
+        self.lock_path = resources_root / ".scout-ledger.json.lock"
+        self.recovery_lock_path = resources_root / ".scout-ledger.json.recovery.lock"
 
     def read(self) -> LedgerState:
         """Return committed records, never a view that conflicts with a journal."""
@@ -240,6 +301,29 @@ class Ledger:
             )
             self._write_journal_unlocked(journal)
             return journal
+
+    def begin_and_claim(self, mutation: Mapping[str, object]) -> RecoveryLease:
+        """Create and claim one new journal without an intervening recovery race."""
+        if not isinstance(mutation, Mapping):
+            raise ValueError("journal mutation must be a mapping")
+        executor_lock = _FileLock(self.recovery_lock_path, self.config)
+        executor_lock.__enter__()
+        try:
+            with self._ledger_lock():
+                self._ensure_no_journal_unlocked()
+                journal = Journal(
+                    operation_id=str(uuid.uuid4()),
+                    mutation=dict(mutation),
+                    phase="claimed",
+                    claim_id=str(uuid.uuid4()),
+                    candidate=None,
+                    publication_id=None,
+                )
+                self._write_journal_unlocked(journal)
+                return RecoveryLease(self, executor_lock, journal)
+        except Exception:
+            executor_lock.__exit__(None, None, None)
+            raise
 
     def claim_recovery(self) -> RecoveryLease | None:
         """Claim the one pending operation while holding the executor lock."""
@@ -400,6 +484,7 @@ class Ledger:
     @staticmethod
     def _atomic_json(path: Path, payload: Mapping[str, object]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
+        fsync_directory(path.parent.parent)
         temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
         try:
             with temporary.open("w", encoding="utf-8", newline="\n") as file:
@@ -407,6 +492,6 @@ class Ledger:
                 file.write("\n")
                 file.flush()
                 os.fsync(file.fileno())
-            os.replace(temporary, path)
+            durable_replace(temporary, path)
         finally:
             temporary.unlink(missing_ok=True)

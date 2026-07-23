@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from diagnostics import DiagnosticCode, ScoutDiagnosticsError, foundation_diagnostic
 
@@ -26,10 +26,16 @@ class FetchConfig:
 
 
 @dataclass(frozen=True)
+class RepoFileConfig:
+    publishable_paths: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class ScoutConfig:
     schema_version: int
     ledger: LedgerConfig
     fetch: FetchConfig
+    repo_files: RepoFileConfig
 
 
 class _Validator:
@@ -108,7 +114,7 @@ def load_config(path: Path = CONFIG_PATH) -> ScoutConfig:
     """Load the exact v1 Scout config or raise typed aggregate diagnostics."""
     payload = _load_json(path)
     validator = _Validator()
-    root = validator.object(payload, "$", ("schema_version", "ledger", "fetch"))
+    root = validator.object(payload, "$", ("schema_version", "ledger", "fetch", "repo_files"))
     if root is None:
         raise ScoutDiagnosticsError(tuple(validator.diagnostics))
 
@@ -124,8 +130,10 @@ def load_config(path: Path = CONFIG_PATH) -> ScoutConfig:
         "$.fetch",
         ("request_timeout_seconds", "max_redirects", "max_response_bytes"),
     )
+    repo_files_raw = validator.object(root.get("repo_files"), "$.repo_files", ("publishable_paths",))
 
     wait = poll = timeout = redirects = response_bytes = None
+    publishable_paths: tuple[str, ...] | None = None
     if ledger_raw is not None:
         wait = validator.integer(ledger_raw.get("lock_wait_seconds"), "$.ledger.lock_wait_seconds")
         poll = validator.integer(
@@ -156,12 +164,49 @@ def load_config(path: Path = CONFIG_PATH) -> ScoutConfig:
         if response_bytes is not None and response_bytes <= 0:
             validator.invalid_value("$.fetch.max_response_bytes", "must be positive", response_bytes)
 
+    if repo_files_raw is not None:
+        raw_paths = repo_files_raw.get("publishable_paths")
+        if not isinstance(raw_paths, list):
+            validator.wrong_type("$.repo_files.publishable_paths", "array", raw_paths)
+        else:
+            paths: list[str] = []
+            seen: set[str] = set()
+            for index, raw_path in enumerate(raw_paths):
+                path = f"$.repo_files.publishable_paths[{index}]"
+                if not isinstance(raw_path, str):
+                    validator.wrong_type(path, "string", raw_path)
+                    continue
+                candidate = PurePosixPath(raw_path)
+                if (
+                    not raw_path
+                    or "\\" in raw_path
+                    or candidate.is_absolute()
+                    or candidate.as_posix() != raw_path
+                    or any(
+                        part in ("", ".", "..") or ":" in part or part.startswith(".")
+                        for part in candidate.parts
+                    )
+                ):
+                    validator.invalid_value(
+                        path,
+                        "must be a normalized non-hidden relative POSIX file path",
+                        raw_path,
+                    )
+                    continue
+                if raw_path in seen:
+                    validator.invalid_value(path, "must not duplicate an earlier path", raw_path)
+                    continue
+                seen.add(raw_path)
+                paths.append(raw_path)
+            publishable_paths = tuple(paths)
+
     if validator.diagnostics:
         raise ScoutDiagnosticsError(tuple(validator.diagnostics))
 
     assert schema_version == 1
     assert wait is not None and poll is not None
     assert timeout is not None and redirects is not None and response_bytes is not None
+    assert publishable_paths is not None
     return ScoutConfig(
         schema_version=schema_version,
         ledger=LedgerConfig(lock_wait_seconds=wait, lock_poll_milliseconds=poll),
@@ -170,4 +215,5 @@ def load_config(path: Path = CONFIG_PATH) -> ScoutConfig:
             max_redirects=redirects,
             max_response_bytes=response_bytes,
         ),
+        repo_files=RepoFileConfig(publishable_paths=publishable_paths),
     )

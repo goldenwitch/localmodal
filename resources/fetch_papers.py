@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-"""Fetch the curated paper set into resources/pdf/.
+"""Pre-activation compatibility fetcher for the legacy paper mirror.
 
-Source of truth is papers.md; the list below mirrors it. Re-run anytime;
-existing files are skipped unless --force is passed.
-
-Usage:
-    python fetch_papers.py [--force]
+After `python resources/source_cli.py migrate` activates the source control
+plane, this command fails before mutating files. Add explicit source rows
+through `source_propose` instead.
 """
 from __future__ import annotations
 
@@ -58,6 +56,12 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--force", action="store_true", help="re-download existing files")
     args = parser.parse_args(argv)
+
+    try:
+        freshness.require_legacy_writer()
+    except RuntimeError as exc:
+        print(f"FATAL: {exc}", file=sys.stderr)
+        return 1
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     failures: list[str] = []

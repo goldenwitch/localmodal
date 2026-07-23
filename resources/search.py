@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Semantic search over the local corpus: papers (resources/pdf/*.pdf), pinned
+"""Pre-activation compatibility semantic search over the local corpus: papers (resources/pdf/*.pdf), pinned
 vendor docs (resources/modal-docs/**/*.md and resources/vscode-docs/**/*.md),
 and our own writing (human-owned-spec/*.md, notes/**/*.md,
 proposals/**/*.md, root *.md, and structural task/ref chunks from root and
@@ -26,7 +26,7 @@ Pinned sources carry a date + TTL in the freshness ledger (freshness.py);
 a stale or absent pin attaches a warning to every reply from its corpus,
 so consulting rotten ground and seeing the rot are the same event.
 
-Usage:
+Compatibility usage before source-control activation:
     python search.py "warmth thermostat reconciler"
     python search.py "prefix cache hit rate" --k 8
     python search.py "query one" "query two" "query three"   # batch: index loads once
@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import functools
 import hashlib
 import json
 import os
@@ -338,6 +339,16 @@ def _save_version(corpus: Corpus, emb: Embeddings | None, sigs: dict[str, str]) 
     _publish(corpus, vdir.name)
 
 
+def _legacy_index_operation(function):
+    @functools.wraps(function)
+    def guarded(*args, **kwargs):
+        with freshness.legacy_reader_session():
+            return function(*args, **kwargs)
+
+    return guarded
+
+
+@_legacy_index_operation
 def build(corpus: Corpus) -> Embeddings | None:
     """Extract, embed, and publish a fresh index version for `corpus`.
 
@@ -370,6 +381,7 @@ def build(corpus: Corpus) -> Embeddings | None:
     return emb
 
 
+@_legacy_index_operation
 def update(corpus: Corpus) -> Embeddings:
     """Incremental index update for `corpus`: embed only the chunks whose text is new or changed,
     drop the chunks that disappeared, and publish a new version -- the fast path when a few sources
@@ -407,6 +419,7 @@ def update(corpus: Corpus) -> Embeddings:
     return emb
 
 
+@_legacy_index_operation
 def _ensure_current_schema(corpus: Corpus, rebuild: bool = False) -> Path:
     """Return a current-schema version, rebuilding a missing or tagless one first."""
     current = _read_current(corpus)
@@ -418,6 +431,7 @@ def _ensure_current_schema(corpus: Corpus, rebuild: bool = False) -> Path:
     return current
 
 
+@_legacy_index_operation
 def load_or_build(corpus: Corpus, rebuild: bool, update_mode: bool = False) -> Embeddings | None:
     if rebuild:
         return build(corpus)
@@ -518,37 +532,47 @@ def serve(rebuild: bool) -> int:
     newer version, swap to it and close the old one -- so a rebuild is picked up live
     without a restart, and letting go of the old version lets the next rebuild reclaim it."""
     live: dict[str, list] = {}  # name -> [emb, version]
-    with contextlib.redirect_stdout(sys.stderr):
-        for corpus in CORPORA.values():
-            cur = _ensure_current_schema(corpus, rebuild)
-            live[corpus.name] = [_load(cur), cur.name]
+    try:
+        with freshness.legacy_reader_session():
+            with contextlib.redirect_stdout(sys.stderr):
+                for corpus in CORPORA.values():
+                    cur = _ensure_current_schema(corpus, rebuild)
+                    live[corpus.name] = [_load(cur), cur.name]
+    except RuntimeError as exc:
+        print(f"FATAL: {exc}", file=sys.stderr)
+        return 1
     print(json.dumps({"ready": True}), flush=True)
     for line in sys.stdin:
         line = line.strip()
         if not line:
             continue
         try:
-            req = json.loads(line)
-            corpus = CORPORA.get(req.get("source"))
-            if corpus is None:
-                raise ValueError(
-                    f"unknown source {req.get('source')!r}; expected one of {sorted(CORPORA)}")
-            with contextlib.redirect_stdout(sys.stderr):
-                cur = _ensure_current_schema(corpus)
-            if cur is not None and cur.name != live[corpus.name][1]:
+            with freshness.legacy_reader_session():
+                req = json.loads(line)
+                corpus = CORPORA.get(req.get("source"))
+                if corpus is None:
+                    raise ValueError(
+                        f"unknown source {req.get('source')!r}; expected one of {sorted(CORPORA)}")
                 with contextlib.redirect_stdout(sys.stderr):
-                    fresh = _load(cur)
-                with contextlib.suppress(Exception):
-                    live[corpus.name][0].close()  # release the old version dir so cleanup can reclaim it
-                live[corpus.name] = [fresh, cur.name]
-            emb = live[corpus.name][0]
-            hits = [{"id": h["id"], "citation": h["citation"],
-                     "score": h.get("score"), "text": h["text"]}
-                    for h in semantic(emb, req["query"], int(req.get("k", 6)))]
-            out = {"hits": hits}
-            warn = freshness.warnings_for(corpus.name)
-            if warn:
-                out["warnings"] = warn
+                    cur = _ensure_current_schema(corpus)
+                if cur is not None and cur.name != live[corpus.name][1]:
+                    with contextlib.redirect_stdout(sys.stderr):
+                        fresh = _load(cur)
+                    with contextlib.suppress(Exception):
+                        live[corpus.name][0].close()  # release the old version dir so cleanup can reclaim it
+                    live[corpus.name] = [fresh, cur.name]
+                emb = live[corpus.name][0]
+                hits = [{"id": h["id"], "citation": h["citation"],
+                         "score": h.get("score"), "text": h["text"]}
+                        for h in semantic(emb, req["query"], int(req.get("k", 6)))]
+                out = {"hits": hits}
+                warn = freshness.warnings_for(corpus.name)
+                if warn:
+                    out["warnings"] = warn
+        except RuntimeError as exc:
+            out = {"error": str(exc)}
+            print(json.dumps(out, ensure_ascii=False), flush=True)
+            break
         except Exception as exc:  # bad line or search error: report it, keep serving
             out = {"error": f"{type(exc).__name__}: {exc}"}
         print(json.dumps(out, ensure_ascii=False), flush=True)
@@ -579,33 +603,36 @@ def main(argv=None) -> int:
 
     if args.serve:
         return serve(args.rebuild)
+    try:
+        with freshness.legacy_reader_session():
+            if args.json:
+                # stdout must stay pure JSON; chatter (index build notices) -> stderr.
+                with contextlib.redirect_stdout(sys.stderr):
+                    embs = {c.name: load_or_build(c, args.rebuild, args.update) for c in CORPORA.values()}
+                    out = [{"query": q,
+                            "hits": [{"id": h["id"], "citation": h["citation"],
+                                      "score": h.get("score"),
+                                      "text": h["text"], "corpus": name}
+                                     for name, emb in embs.items()
+                                     for h in semantic(emb, q, args.k)]}
+                           for q in args.query]
+                print(json.dumps(out, ensure_ascii=False))
+                return 0
 
-    if args.json:
-        # stdout must stay pure JSON; chatter (index build notices) -> stderr.
-        with contextlib.redirect_stdout(sys.stderr):
             embs = {c.name: load_or_build(c, args.rebuild, args.update) for c in CORPORA.values()}
-            out = [{"query": q,
-                    "hits": [{"id": h["id"], "citation": h["citation"],
-                              "score": h.get("score"),
-                              "text": h["text"], "corpus": name}
-                             for name, emb in embs.items()
-                             for h in semantic(emb, q, args.k)]}
-                   for q in args.query]
-        print(json.dumps(out, ensure_ascii=False))
-        return 0
 
-    embs = {c.name: load_or_build(c, args.rebuild, args.update) for c in CORPORA.values()}
-
-    # Batch: pay the model + index loads once, then run every query against all corpora.
-    for name in CORPORA:
-        for w in freshness.warnings_for(name):
-            print(f"!! {w}", file=sys.stderr)
-    for i, query in enumerate(args.query):
-        if len(args.query) > 1:
-            print(f"\n##################### [{i + 1}/{len(args.query)}] {query}")
-        for name, emb in embs.items():
-            print(f"\n========== corpus: {name} ==========")
-            run_query(emb, query, args.k)
+            # Batch: pay the model + index loads once and all run every query against all corpora.
+            for name in CORPORA:
+                for w in freshness.warnings_for(name):
+                    print(f"!! {w}", file=sys.stderr)
+            for i, query in enumerate(args.query):
+                if len(args.query) > 1:
+                    print(f"\n##################### [{i + 1}/{len(args.query)}] {query}")
+                for name, emb in embs.items():
+                    print(f"\n========== corpus: {name} ==========")
+                    run_query(emb, query, args.k)
+    except RuntimeError as exc:
+        raise SystemExit(f"FATAL: {exc}") from exc
     return 0
 
 

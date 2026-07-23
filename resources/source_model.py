@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path, PurePosixPath
-from typing import Mapping
+from typing import Collection, Mapping
 from urllib.parse import urlsplit, urlunsplit
 
 from diagnostics import DiagnosticCode, ScoutDiagnosticsError, diagnostic
@@ -178,7 +178,18 @@ def parse_declaration(value: object, path: str = "$") -> SourceDeclaration:
     )
 
 
-def resolve_repo_file(origin: RepoFileOrigin, repository_root: Path) -> Path:
+def resolve_repo_file(
+    origin: RepoFileOrigin,
+    repository_root: Path,
+    *,
+    publishable_paths: Collection[str] | None = None,
+) -> Path:
+    if publishable_paths is not None and origin.path not in publishable_paths:
+        raise _diagnostic_error(
+            DiagnosticCode.ORIGIN_INVALID,
+            path=origin.path,
+            detail="repo-file path is not on the checked-in publishable path allowlist",
+        )
     root = repository_root.resolve()
     candidate = root.joinpath(*PurePosixPath(origin.path).parts)
     try:
@@ -197,9 +208,13 @@ def artifact_root(resources_root: Path, name: str) -> Path:
 
 
 def origin_to_json(origin: Origin) -> dict[str, str]:
-    if isinstance(origin, HttpsOrigin):
-        return {"kind": "https", "url": origin.url}
-    return {"kind": "repo-file", "path": origin.path}
+    url = getattr(origin, "url", None)
+    if isinstance(url, str):
+        return {"kind": "https", "url": url}
+    path = getattr(origin, "path", None)
+    if isinstance(path, str):
+        return {"kind": "repo-file", "path": path}
+    raise _diagnostic_error(DiagnosticCode.ORIGIN_INVALID, path="$.origin", detail="missing url or path")
 
 
 def declaration_to_json(declaration: SourceDeclaration) -> dict[str, object]:
@@ -245,9 +260,15 @@ def parse_snapshot(value: object, path: str = "$.snapshot") -> SourceSnapshot:
     if not isinstance(materialized_at, str):
         raise _diagnostic_error(DiagnosticCode.LEDGER_MALFORMED, path=path, detail="materialized_at must be text")
     try:
-        datetime.fromisoformat(materialized_at.replace("Z", "+00:00"))
+        parsed_materialized_at = datetime.fromisoformat(materialized_at.replace("Z", "+00:00"))
     except ValueError as exc:
         raise _diagnostic_error(DiagnosticCode.LEDGER_MALFORMED, path=path, detail="invalid materialized_at") from exc
+    if parsed_materialized_at.tzinfo is None or parsed_materialized_at.utcoffset() is None:
+        raise _diagnostic_error(
+            DiagnosticCode.LEDGER_MALFORMED,
+            path=path,
+            detail="materialized_at must include a UTC offset",
+        )
     artifact_path = payload["artifact_path"]
     if not isinstance(artifact_path, str) or not artifact_path:
         raise _diagnostic_error(DiagnosticCode.LEDGER_MALFORMED, path=path, detail="artifact_path must be text")

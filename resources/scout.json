@@ -8,5 +8,16 @@
     "request_timeout_seconds": 60,
     "max_redirects": 5,
     "max_response_bytes": 83886080
+  },
+  "repo_files": {
+    "publishable_paths": [
+      "README.md",
+      "localmodal.vine",
+      "human-owned-spec/initial-spec.md",
+      "proposals/scout-source-management.vine",
+      "proposals/scout-vocabulary.md",
+      "resources/papers.md",
+      "scout/README.md"
+    ]
   }
 }
