@@ -22,11 +22,13 @@ minimal surface, and no measurement finds a feature serving no use.
 > Necessity precedes layout, carried by dependency edges rather than by advice.
 > Every instrument this graph produces carries a known-answer fixture and reports nothing when that fixture fails.
 > The graph ends at ready-to-extract: installable and encapsulated, still living in this repository.
-@guidance text/markdown planning.md
-@guidance text/markdown proposals/scout-organization.md
-@guidance text/markdown proposals/scout-vocabulary.md
+> The public surface is the MCP tools, the CLI subcommands, and the two process protocols the workers speak. Anything else is internal. This definition is stated here so no node has to reconstruct it from an attachment.
+> Subagents do not modify this file. Status, artifacts, and structure are recorded by the orchestrator after review, so a returned result and the graph's account of it never disagree.
+@guidance text/markdown ../planning.md
+@guidance text/markdown scout-organization.md
+@guidance text/markdown scout-vocabulary.md
 ---
-[sen/measure/use-inventory] Inventory every known use of Scout (notstarted)
+[sen/measure/use-inventory] Inventory every known use of Scout (reviewing)
 "Satisfied for all known uses" is only checkable against a written list, and no
 such list exists.
 Owns: proposals/scout-uses.md (new).
@@ -38,8 +40,9 @@ back, and what it would cost if that use disappeared.
 Report data, not judgment: no use is ranked or retired here.
 Accept: every public entry point in the tree appears against at least one named
 use, or is listed explicitly as having none.
+@artifact text/markdown scout-uses.md
 ---
-[sen/measure/surface-overlap] Map overlapping semantics in the public surface (notstarted)
+[sen/measure/surface-overlap] Map overlapping semantics in the public surface (reviewing)
 The surface has entries that mean the same thing in different clothes. Known
 starting points, to be confirmed rather than assumed: with activation dead,
 bootstrap is propose against an empty store; refresh-stale is propose with a
@@ -52,6 +55,7 @@ model, then group entries whose operations are the same modulo an argument or a
 default. For each group give the collapsed form and what would be lost.
 Accept: the overlap map covers the whole surface, and each proposed collapse
 names what a caller could no longer express.
+@artifact text/markdown scout-surface-overlap.md
 ---
 [sen/design/minimal-surface] Design with user: rule the minimal surface (planning)
 Given the use inventory and the overlap map, rule the surface: which entry

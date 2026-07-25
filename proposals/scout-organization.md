@@ -1,8 +1,8 @@
 # Scout organization — three lenses
 
 Status: DRAFT for the owner. Measurements taken 2026-07-24 at `e751fec`. This
-reports data and two candidate principles; it settles nothing. The remediation
-plan graph is `proposals/scout-organization.vine`.
+reports data and two candidate principles; it settles nothing. The plan graph
+that consumes it is `proposals/scout-encapsulation.vine`.
 
 ## 0. Three lenses, and the order they have to run in
 
