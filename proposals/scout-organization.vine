@@ -1,0 +1,233 @@
+vine 1.2.0
+prefix: sorg
+title: Scout organization remediation
+---
+[sorg] Reduce Scout to its least-entangled necessary features (planning)
+Scout carries features that exist only to retire other features, facts declared
+in three places, and a tree whose shape is held together by path arithmetic.
+This graph plans the remediation ahead of extraction, in the order the
+measurements imply: rule what is necessary, delete what is not, then lay out
+what remains.
+Complete when extracted-Scout's necessary capability surface is the only thing
+in the tree, and moving a file costs nothing.
+-> sorg/verify/organization
+> Necessity precedes layout. The cheapest description of an unnecessary feature is zero, so no relocation of a feature happens before its survival is ruled.
+> The unit of feature is the public capability surface: MCP tools and CLI subcommands. Necessity is judged against Scout-as-extracted, not against localmodal's trial.
+> Measurements in the attached proposal are dated to 2026-07-24 at e751fec and are re-runnable; a claim that has drifted is remeasured rather than argued.
+@guidance text/markdown proposals/scout-organization.md
+@guidance text/markdown proposals/scout-vocabulary.md
+---
+[sorg/design/necessary-capabilities] Design with user: the surviving capability surface (planning)
+Rule which public capabilities extracted Scout has: the source tools
+(scout_search, source_read, source_propose, refresh_stale), the CLI
+subcommands, web_search, and the retired set (legacy aliases, vendor fetch
+scripts, migrate). Measured footprints: web_search 661 lines across 4 modules
+touching the engine at zero points; legacy aliases 640; vendor fetchers 281;
+migrate 208.
+web_search is separable at zero cost either way, which makes it the one
+capability whose ruling can be deferred cheaply.
+Accept: the owner names the surviving list and the retired list, and every
+module in the attached reachability table belongs to exactly one of them.
+---
+[sorg/design/activation-residue] Design with user: what remains of activation (planning)
+activation.py is 96 lines, fan-in 6, and the only module reachable from all six
+capabilities; its job is sequencing the legacy cutover so a legacy reader
+cannot fall back. With the retired capabilities gone there is no reader to
+fence out, but "has this store ever published?" may remain a necessary state
+distinct from "has the cutover happened?".
+Owns the fate of the ACTIVATED marker, transition_lock, is_source_control_active,
+and the BOOTSTRAP_AFTER_ACTIVATION and LEGACY_MIGRATION_REQUIRED diagnostic
+codes.
+Accept: the owner rules which states survive, where they live, and which
+diagnostic codes leave the closed union.
+-> sorg/design/necessary-capabilities
+---
+[sorg/design/root-provenance] Design with user: where a root comes from (planning)
+29 of 53 modules derive their own location from __file__; 9 take a root
+parameter; 15 need neither. Rule how a root reaches the code that needs one,
+and name the exact set of entrypoints permitted to derive it.
+This node owns location provenance for every caller including tests; it does
+not own what a test is allowed to address.
+Accept: the owner selects one provenance and names the permitted deriving set,
+such that a module's physical position stops being load-bearing.
+---
+[sorg/design/test-coupling] Design with user: what a test may address (planning)
+The split preserved the pre-split module object as a patch address:
+source_control/__init__ re-exports the surface and owns runtime seams, and
+plane.py and execution.py resolve the package through sys.modules[__package__]
+at call time. harness.py loads engine modules by file path with a fallback
+branch that detects whether a name has become a package.
+Rule what a test is permitted to reach: the public surface, named seams, or
+module internals.
+Accept: the owner rules the addressable surface, and the runtime self-reference
+either has a stated reason to remain or a replacement.
+---
+[sorg/design/process-topology] Design with user: one program or two (planning)
+scout/server holds exactly one import edge into the engine and reaches
+everything else by spawning two long-lived workers over line-JSON pipes. At
+runtime scout/ and resources/ behave like two programs; in the tree they look
+like two folders of one. Retiring the legacy aliases retires one of the two
+workers, which changes the question rather than answering it.
+Accept: the owner rules whether the surviving worker is a peer process or an
+internal detail, since that decides whether the two directories may merge.
+-> sorg/design/necessary-capabilities
+---
+[sorg/measure/capability-tracing] Trace capabilities to methods, not modules (notstarted)
+Module-level reachability cannot separate scout_search from source_propose:
+both enter through the SourceControl facade, so all 17 core modules appear
+shared by every source capability. Trace at method level instead, so read and
+mutate are shown to be one factor or two.
+Report data: per-capability module and method sets, and the modules that serve
+exactly one capability.
+Accept: the over-approximation recorded in the proposal is replaced by a
+measured split, or is shown to be the true answer.
+---
+[sorg/measure/fence-cost] Measure the cost of a stratum fence (notstarted)
+The import graph is 8 strata with zero static cycles, but directory membership
+predicts nothing about what a module may import. Measure which current edges
+would become illegal if directories encoded strata.
+Report data: the illegal-edge list, or its absence.
+Accept: the evidence shows whether tree-as-permission costs anything today or
+is free because the graph is already clean.
+---
+[sorg/remove/legacy-readers] Retire the pre-activation reader path (notstarted)
+Owns resources/search.py (640 lines, including the second CURRENT pointer the
+design ruled must never be read as truth), resources/freshness.py (114), the
+tracked resources/sources.json freshness ledger, and the legacy alias routing
+and unconditional startup spawn in scout/server.py, which today pays an index
+and model load on every server start for a route that post-activation
+delegates elsewhere.
+Accept: no alias resolves through a pre-activation index, and no second index
+pointer exists in the tree.
+-> sorg/design/activation-residue
+---
+[sorg/remove/vendor-fetchers] Retire the per-vendor fetch scripts (notstarted)
+Owns resources/fetch_modal_docs.py, resources/fetch_papers.py, and
+resources/fetch_vscode_docs.py (281 lines), whose onboarding role was replaced
+by the public propose and refresh-stale commands.
+Accept: no onboarding path requires a bespoke vendor script, and the checked-in
+material they produced is reachable only as declared sources.
+-> sorg/design/activation-residue
+---
+[sorg/remove/legacy-migration] Retire the one-shot legacy import (notstarted)
+Owns resources/source_migration.py (208 lines), resources/initial-sources.json,
+and the migrate and write-migration-manifest CLI subcommands. The private
+bootstrap path on the control plane is a separate surface and is not in scope
+here.
+Accept: the migration entrypoints are gone and no surviving command depends on
+the legacy manifest.
+-> sorg/design/activation-residue
+---
+[sorg/remove/transition-tests] Retire the transition-only test coverage (notstarted)
+Owns scout/tests/test_corpus.py, test_freshness.py,
+test_legacy_activation_guard.py, test_activation_marker.py (174 lines
+together), and the legacy leg of test_machine_output.py.
+Accept: the suite covers only surviving behavior, and no removed test was
+carrying an assertion about a surviving feature.
+-> sorg/remove/legacy-migration
+-> sorg/remove/legacy-readers
+-> sorg/remove/vendor-fetchers
+---
+[sorg/implement/activation-residue] Apply the activation ruling (notstarted)
+Implement whatever the ruling leaves: the surviving state, its home, and the
+closed diagnostic union with the retired codes removed. Lands only once the
+capabilities that consumed the marker are gone.
+Accept: the union is closed over surviving codes, and no surviving module
+imports a concept whose only job was the cutover.
+-> sorg/design/activation-residue
+-> sorg/remove/transition-tests
+---
+[sorg/implement/dispatch-surface] Describe the command surface once (notstarted)
+source_cli.main and source_worker._reply are two dispatch tables over the same
+five control-plane operations, 76 and 68 lines, each with separately written
+argument validation and error rendering. The design ruled that both a CLI and
+an MCP surface exist; it did not rule that the mapping be written twice.
+Accept: adding or changing an operation is a single-site edit, and both
+surfaces still return the shared control-plane result shape.
+-> sorg/design/necessary-capabilities
+-> sorg/remove/legacy-migration
+---
+[sorg/implement/embedding-identity] Declare the embedding model once (notstarted)
+resources/search.py, resources/source_index.py, and resources/vine.py each
+declare MODEL = sentence-transformers/all-MiniLM-L6-v2 independently, and the
+VINE windower derives its token budget from the identity it declares for
+itself. Three descriptions of one fact, where a silent divergence would produce
+segments that exceed the index's real encoder limit.
+Accept: one declaration, and the windower's budget is derived from the same
+value the index is built with.
+-> sorg/remove/legacy-readers
+---
+[sorg/implement/root-provenance] Remove derived location from non-entrypoints (notstarted)
+Apply the ruled provenance: config.py's CONFIG_PATH, the two mixed derivers,
+and the 18 test modules that rebind __file__ to scout/smoke.py so that
+parents[1] arithmetic still lands on the repo root. test_ledger.py additionally
+computes a subprocess PYTHONPATH from that rebound value.
+Accept: no module outside the permitted deriving set references __file__ for
+location, and the suite passes without any module asserting a false position.
+-> sorg/design/root-provenance
+---
+[sorg/implement/location-check] Make location-dependence an executable check (notstarted)
+The census that produced the 29/9/15 split is ~60 lines and already the shape
+of the check. Give it a threshold and a home so a regression fails loudly
+rather than being found by the next refactor.
+Accept: introducing a derived location outside the permitted set fails the
+check.
+-> sorg/implement/root-provenance
+---
+[sorg/implement/patch-seam] Apply the test-coupling ruling (notstarted)
+Implement the ruled addressable surface: the sys.modules[__package__]
+self-reference in plane.py and execution.py, the re-export and seam ownership
+in source_control/__init__.py, and harness.py's file-path module loader with
+its package-detection fallback.
+Accept: no test addresses a module object that exists only to reproduce a
+pre-split namespace.
+-> sorg/design/test-coupling
+---
+[sorg/design/tree] Design with user: the tree that remains (planning)
+With necessity ruled, the removals landed, and location no longer load-bearing,
+choose the layout: whether resources/ and scout/ merge, whether directories
+encode strata, whether a src/ layout applies, where the checked-in
+configuration lives, and how corpus material ships once it is a materialized
+source rather than package data.
+Accept: the owner selects one layout, and every surviving module has exactly
+one home under it.
+-> sorg/design/process-topology
+-> sorg/design/root-provenance
+-> sorg/measure/capability-tracing
+-> sorg/measure/fence-cost
+---
+[sorg/implement/tree] Move to the ruled layout under one import discipline (notstarted)
+Apply the selected layout as one change, collapsing the four ways a caller
+currently reaches engine code: bare-name flat namespace, package-relative
+imports, importlib loading by file path, and subprocess spawn by absolute
+path.
+Accept: one import discipline holds across the tree, the smoke suite is green
+before and after, and no spawn target is addressed by a path computed from a
+module's own position.
+-> sorg/design/tree
+-> sorg/implement/patch-seam
+-> sorg/implement/root-provenance
+-> sorg/remove/transition-tests
+---
+[sorg/implement/diagnostic-repair-paths] Decouple repair text from the tree (notstarted)
+Diagnostic repair strings name invocation paths such as resources/source_cli.py,
+so the closed error union carries knowledge of the file layout and goes stale
+at extraction.
+Accept: a diagnostic's repair instruction survives a layout change without
+edits, or its dependence on one is deliberate and stated.
+-> sorg/design/tree
+---
+[sorg/verify/organization] Verify the remediated organization (notstarted)
+Re-run the capability, strata, location, and filesystem-ownership measurements
+against the remediated tree and record the deltas beside the 2026-07-24
+baseline. Exercise every surviving capability through both CLI and MCP.
+Report data: measured line and module counts per capability, the location
+census, and the surviving diagnostic union.
+Accept: every surviving capability behaves identically to its pre-remediation
+behavior, and no measurement shows a feature that serves no capability.
+-> sorg/implement/activation-residue
+-> sorg/implement/diagnostic-repair-paths
+-> sorg/implement/dispatch-surface
+-> sorg/implement/embedding-identity
+-> sorg/implement/location-check
+-> sorg/implement/tree
