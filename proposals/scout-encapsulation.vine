@@ -252,7 +252,7 @@ nodes that apply it.
 > The sys.modules[__package__] self-reference and the package's seam ownership have no surviving justification.
 > Failure injection that relied on patching a module object becomes reachable through the public surface or through a fixture.
 ---
-[sen/implement/instrument-fixtures] Give the measurement scripts known-answer fixtures (notstarted)
+[sen/implement/instrument-fixtures] Give the measurement scripts known-answer fixtures (reviewing)
 Owns: tools/ (new).
 Do: the import-graph and location-census scripts used to produce
 proposals/scout-organization.md live in a temp directory and twice reported
@@ -262,6 +262,9 @@ one package __init__ with relative imports, and one module deriving its own
 location — and have each script report nothing when its fixture fails.
 Accept: each instrument passes its fixture before printing, and reintroducing
 either historical bug makes the fixture fail.
+@artifact text/x-python ../tools/import_graph.py
+@artifact text/x-python ../tools/location_census.py
+@artifact text/x-python ../tools/fixture.py
 ---
 [sen/implement/location-check] Make location-dependence a standing check (notstarted)
 Owns: the location census entry point under tools/.

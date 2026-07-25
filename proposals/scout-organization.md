@@ -36,10 +36,12 @@ capability surface** (MCP tools + CLI subcommands); necessity is judged against
 
 AST import graph over `resources/**.py` and `scout/**.py`; bare-name imports
 resolved against `resources/` (the flat namespace) and packages beneath it;
-longest-path strata, cycle detection, and per-capability reachability with
-`subprocess.Popen` targets added as explicit edges. Location census counts
-`Path(__file__)` / `__file__ =` sites against modules taking a `root: Path`
-parameter. Both scripts are ~60 lines and re-runnable.
+longest-path strata and cycle detection over import edges only, and
+per-capability reachability over import edges plus `subprocess.Popen` targets.
+Location census counts `Path(__file__)` / `__file__ =` sites against modules
+taking a `root: Path` parameter. Both instruments now live in `tools/` with a
+known-answer fixture; they were working copies when the figures below were
+taken.
 
 Two bugs found and fixed mid-measurement, recorded because the first numbers
 were wrong and may be quoted from elsewhere:
@@ -67,6 +69,13 @@ Modules grouped by the set of public capabilities that can reach them.
 | the above + legacy aliases | `vine` | 348 |
 | **all six capabilities** | `activation` | 96 |
 | dispatch only | `source_cli` (76), `source_worker` (68) | 144 |
+
+The `tools/` reconstruction reproduces every figure above except that last row:
+counting each entry point as served by its own capability puts `source_cli` and
+`source_worker` under `cli` and the source tools rather than in a group of their
+own. It also reports 11 modules as told their location rather than 9, marking
+the two mixed derivers as both. Recorded as measured deltas rather than
+retrofitted into the table.
 
 Observations:
 
