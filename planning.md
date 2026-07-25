@@ -31,6 +31,13 @@ Necessity is upstream of everything else. Arranging, decomposing, migrating, and
 hardening all multiply the cost of whatever they touch, so they are worth doing
 after survival is settled and not before.
 
+Remedies belong on a ladder, strongest first: **impossible** — the structure
+leaves no way to express the mistake; **screaming** — a check fails loudly and
+early; **discipline** — someone remembers. Discipline is where a remedy lands
+when the first two are unavailable, not where it starts. Five of the six
+pitfalls below reach the first rung. One reaches the second and no further, and
+says so.
+
 ## 2. A zoo of pitfalls
 
 Six distinct animals. The first is the most common — three sightings in one
@@ -67,6 +74,19 @@ empty. The plan that named the pattern reproduced it.
 *The question that catches it:* what happens if this is simply absent, and what
 does that cost?
 
+*Remedy, rung 1.* Let the outgoing and incoming implementations share no state:
+no common lock, no marker, no routing consulted by both. With no shared surface,
+"a mixed answer" has nowhere to be expressed, and the switch becomes a one-line
+change to what gets started. The apparatus at `07b36b0` was *entirely* shared
+surface — a lock both sides held, a marker both sides read, aliases that
+consulted it. The coupling existed to guarantee the transition property, and the
+property existed because of the coupling.
+
+*Remedy, rung 2, where both must genuinely coexist.* State the price as a number
+in the node, and have the verifying node compare the size of the defense against
+it. Sixty-nine sites against a stated price of one command is a ratio that
+screams without anyone needing to notice.
+
 ### Arrangement before necessity
 
 *Shape:* effort is spent organizing, splitting, or migrating artifacts whose
@@ -79,6 +99,12 @@ several code paths that the next plan scheduled for deletion. The decomposition
 was competent; it was applied to code whose necessity had not been settled.
 
 *The question that catches it:* is this staying?
+
+*Remedy, rung 1.* Express the ordering as a dependency edge rather than as
+advice. When each arranging node depends on the necessity ruling for the
+artifacts it touches, the execution frontier will not offer it early. The plan
+format already computes the frontier, so this is enforcement rather than memory —
+and it was available at the time, simply unused.
 
 ### One word, two referents
 
@@ -101,6 +127,15 @@ whole document was needed to say what the names did not.
 
 *The question that catches it:* does this word already mean something here?
 
+*Remedy, rung 1.* One module owns each on-disk name and each shared term; others
+take it from that owner instead of constructing their own. A second `CURRENT`
+becomes unwritable rather than merely forbidden.
+
+*Remedy, rung 2.* Scan for identifiers bound in more than one module, and for
+filename literals constructed in more than one place. This is already working:
+the ownership scan in `proposals/scout-organization.md` §6 found the second
+`CURRENT` without being told to look for it.
+
 ### The proxy that ranked the work
 
 *Shape:* a measurement is correct but measures a stand-in, and the stand-in
@@ -115,6 +150,12 @@ tabulated in `proposals/scout-organization.md` §7.
 
 *The question that catches it:* what is this a proxy for, and what would a
 different lens rank first?
+
+*Remedy, rung 2 — and there is no rung 1 here.* A ranking becomes actionable only
+once a second independent measure has ranked the same targets, with the
+disagreement published rather than resolved. No structure can prevent a
+measurement from standing in for the thing you care about; the best available
+move is to make a single lens insufficient to authorize work.
 
 ### The unvalidated instrument
 
@@ -133,6 +174,11 @@ mutate through a facade.
 *The question that catches it:* what does this tool say about a case I already
 know the answer to?
 
+*Remedy, rung 1.* An instrument carries a fixture whose answer is known by hand
+and reports nothing when the fixture fails. A four-module fixture containing one
+deliberate cycle and one package `__init__` would have caught both errors above
+before either was spoken aloud.
+
 ### Mechanism before noun-count
 
 *Shape:* a fork is offered between implementations of a thing before the thing
@@ -148,20 +194,38 @@ mechanism question is real but downstream.
 
 *The question that catches it:* how many of these are there?
 
+*Remedy, rung 1.* Make the count its own node and let the design node depend on
+it. Same mechanism as arrangement-before-necessity: the graph carries the
+ordering, so the fork cannot be offered before the cardinality is known.
+
 ## 3. Rubric
 
-Positively framed, for a planner calibrating a plan before committing it.
+Ordered by rung. Build the first two wherever they are available, and let
+discipline carry only what is left.
 
-1. Every item names the requirement it serves.
-2. Every protected property states what its absence would cost.
-3. Every claim carries the measurement that produced it, re-runnable by the next
-   reader.
-4. Each thing has one name, and each name one thing.
-5. Nouns are counted before mechanisms are compared.
-6. Pruning is scheduled ahead of arranging.
-7. Instruments are checked against a known answer before their output is quoted.
-8. Where a lens ranks the work, a second lens is asked what it would rank first.
+**Make it impossible**
 
-A plan that answers these is still likely to be wrong somewhere. It will be
-wrong in a way the next measurement can find, which is the property worth
-having.
+1. Outgoing and incoming implementations share no state, so a transition
+   property has no surface on which to be stated.
+2. Ordering lives in dependency edges — pruning ahead of arranging, counting
+   ahead of choosing — so the frontier enforces it and nobody has to recall it.
+3. Each name has one owning module, and everyone else takes it from there.
+4. Instruments carry a known-answer fixture and stay silent when it fails.
+
+**Make it scream**
+
+5. Each protected property states its price as a number, and verification
+   compares the size of its defense against that number.
+6. Duplicate identifiers and duplicate on-disk literals are scanned for.
+7. A ranking authorizes work once a second independent measure has ranked the
+   same targets, and the disagreement is published.
+8. A node that names no requirement fails validation.
+
+**Leave to discipline**
+
+Judging whether a stated price is honest, and whether a chosen lens is the right
+one. Both stay human — which is the argument for stating them in the open, where
+they can be disagreed with early and cheaply.
+
+A plan that answers these is still likely to be wrong somewhere. It will be wrong
+in a way the next measurement can find, which is the property worth having.
