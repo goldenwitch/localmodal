@@ -17,7 +17,7 @@ in the tree, and moving a file costs nothing.
 @guidance text/markdown proposals/scout-organization.md
 @guidance text/markdown proposals/scout-vocabulary.md
 ---
-[sorg/design/necessary-capabilities] Design with user: the surviving capability surface (planning)
+[sorg/design/necessary-capabilities] Design with user: the surviving capability surface (complete)
 Rule which public capabilities extracted Scout has: the source tools
 (scout_search, source_read, source_propose, refresh_stale), the CLI
 subcommands, web_search, and the retired set (legacy aliases, vendor fetch
@@ -28,8 +28,11 @@ web_search is separable at zero cost either way, which makes it the one
 capability whose ruling can be deferred cheaply.
 Accept: the owner names the surviving list and the retired list, and every
 module in the attached reachability table belongs to exactly one of them.
+> Owner ruling 2026-07-24: the retired set is the legacy aliases, the vendor fetch scripts, and migrate. The private bootstrap path survives as the first-publication surface.
+> Owner ruling 2026-07-24: the current corpus is re-declared as explicit source rows through the ordinary path, so retiring migrate strands no store.
+> web_search survives. It was measured separable from the engine at zero cost, so a later reversal is nearly free.
 ---
-[sorg/design/activation-residue] Design with user: what remains of activation (planning)
+[sorg/design/activation-residue] Design with user: what remains of activation (complete)
 activation.py is 96 lines, fan-in 6, and the only module reachable from all six
 capabilities; its job is sequencing the legacy cutover so a legacy reader
 cannot fall back. With the retired capabilities gone there is no reader to
@@ -41,6 +44,9 @@ codes.
 Accept: the owner rules which states survive, where they live, and which
 diagnostic codes leave the closed union.
 -> sorg/design/necessary-capabilities
+> Owner ruling 2026-07-24: the activation concept dies entirely. An absent CURRENT means an empty store, not a pre-cutover state.
+> Bootstrap becomes the first ordinary publication rather than a private pre-activation command.
+> The ACTIVATED marker, transition_lock, is_source_control_active, BOOTSTRAP_AFTER_ACTIVATION, and LEGACY_MIGRATION_REQUIRED all leave the surviving design.
 ---
 [sorg/design/root-provenance] Design with user: where a root comes from (planning)
 29 of 53 modules derive their own location from __file__; 9 take a root
@@ -51,7 +57,7 @@ not own what a test is allowed to address.
 Accept: the owner selects one provenance and names the permitted deriving set,
 such that a module's physical position stops being load-bearing.
 ---
-[sorg/design/test-coupling] Design with user: what a test may address (planning)
+[sorg/design/test-coupling] Design with user: what a test may address (complete)
 The split preserved the pre-split module object as a patch address:
 source_control/__init__ re-exports the surface and owns runtime seams, and
 plane.py and execution.py resolve the package through sys.modules[__package__]
@@ -61,6 +67,9 @@ Rule what a test is permitted to reach: the public surface, named seams, or
 module internals.
 Accept: the owner rules the addressable surface, and the runtime self-reference
 either has a stated reason to remain or a replacement.
+> Owner ruling 2026-07-24: tests address the public surface only. No module-object patching and no internals.
+> The sys.modules[__package__] self-reference and the package's seam ownership have no surviving justification.
+> Failure injection that relied on patching a module object must become reachable through the public surface or through a fixture.
 ---
 [sorg/design/process-topology] Design with user: one program or two (planning)
 scout/server holds exactly one import edge into the engine and reaches
@@ -100,6 +109,7 @@ delegates elsewhere.
 Accept: no alias resolves through a pre-activation index, and no second index
 pointer exists in the tree.
 -> sorg/design/activation-residue
+-> sorg/implement/corpus-redeclaration
 ---
 [sorg/remove/vendor-fetchers] Retire the per-vendor fetch scripts (notstarted)
 Owns resources/fetch_modal_docs.py, resources/fetch_papers.py, and
@@ -111,12 +121,14 @@ material they produced is reachable only as declared sources.
 ---
 [sorg/remove/legacy-migration] Retire the one-shot legacy import (notstarted)
 Owns resources/source_migration.py (208 lines), resources/initial-sources.json,
-and the migrate and write-migration-manifest CLI subcommands. The private
-bootstrap path on the control plane is a separate surface and is not in scope
-here.
-Accept: the migration entrypoints are gone and no surviving command depends on
-the legacy manifest.
+the migrate and write-migration-manifest CLI subcommands, and the
+SourceControl.bootstrap_import path with the imports map it consumes — the
+adopt-local-bytes mechanism that is the module's only reason to exist. The
+ordinary bootstrap path is a separate surface and survives.
+Accept: no adopt-in-place materialization path remains, and no surviving
+command depends on the legacy manifest.
 -> sorg/design/activation-residue
+-> sorg/implement/corpus-redeclaration
 ---
 [sorg/remove/transition-tests] Retire the transition-only test coverage (notstarted)
 Owns scout/tests/test_corpus.py, test_freshness.py,
@@ -128,12 +140,16 @@ carrying an assertion about a surviving feature.
 -> sorg/remove/legacy-readers
 -> sorg/remove/vendor-fetchers
 ---
-[sorg/implement/activation-residue] Apply the activation ruling (notstarted)
-Implement whatever the ruling leaves: the surviving state, its home, and the
-closed diagnostic union with the retired codes removed. Lands only once the
-capabilities that consumed the marker are gone.
-Accept: the union is closed over surviving codes, and no surviving module
-imports a concept whose only job was the cutover.
+[sorg/implement/activation-residue] Remove the activation concept (notstarted)
+The ruling is deletion, so this node removes rather than reshapes: the ACTIVATED
+marker and its one-way write, transition_lock and its barrier discipline,
+is_source_control_active, and the BOOTSTRAP_AFTER_ACTIVATION and
+LEGACY_MIGRATION_REQUIRED members of the closed diagnostic union. An absent
+CURRENT becomes an empty store rather than a pre-cutover state, and bootstrap
+becomes an ordinary first publication.
+Accept: the union is closed over surviving codes, no surviving module imports a
+cutover concept, and an empty store is reported as empty rather than as a
+transition state.
 -> sorg/design/activation-residue
 -> sorg/remove/transition-tests
 ---
@@ -207,6 +223,7 @@ module's own position.
 -> sorg/design/tree
 -> sorg/implement/patch-seam
 -> sorg/implement/root-provenance
+-> sorg/remove/cached-corpus
 -> sorg/remove/transition-tests
 ---
 [sorg/implement/diagnostic-repair-paths] Decouple repair text from the tree (notstarted)
@@ -231,3 +248,31 @@ behavior, and no measurement shows a feature that serves no capability.
 -> sorg/implement/embedding-identity
 -> sorg/implement/location-check
 -> sorg/implement/tree
+---
+[sorg/implement/corpus-redeclaration] Declare the corpus as ordinary source rows (notstarted)
+The manifest's rows are already ordinary `add` declarations, and source_cli
+bootstrap already accepts exactly that array. The only thing migrate adds is an
+imports map binding each row to its already-fetched local file so the bytes can
+be adopted instead of re-fetched.
+This node therefore lifts the rows out as checked-in declaration input and
+builds the store by ordinary fetch, rather than migrating anything.
+Accept: the corpus is queryable through a publication built by ordinary
+materialization, with no import-adoption path involved.
+-> sorg/design/necessary-capabilities
+> Owner observation 2026-07-24: the corpus never needed in-place migration. Nothing here is precious state.
+> The material is 285 re-fetchable public document URLs plus 7 repository files. Re-fetching is also more correct than adopting checked-in bytes: current content, real digests, real TTL semantics.
+> The manifest's rows array is already ordinary declaration input. Only its imports map, and the bootstrap_import path that consumes it, exist to avoid a re-fetch that costs little.
+---
+[sorg/remove/cached-corpus] Retire the checked-in corpus cache (notstarted)
+Owns resources/modal-docs/, resources/vscode-docs/, and resources/pdf/. The
+first two are a checked-in cache of material that is declared and re-fetchable,
+so holding them in the tree is a redundant description of a source.
+resources/pdf/ is different and worth seeing plainly: no manifest row declares
+it, because v1 sources admit only text/plain and text/markdown. Retiring the
+legacy reader therefore ends PDF search entirely — the coverage reduction ruled
+during source management, made concrete. Papers survive as resources/papers.md,
+which is a declared repo-file row.
+Accept: no checked-in directory duplicates material that a declared source
+materializes, and any coverage ended by the deletion is stated rather than
+discovered.
+-> sorg/implement/corpus-redeclaration
