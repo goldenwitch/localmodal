@@ -153,8 +153,8 @@ injected or location-free; the design's boundary modules take `resources_root`.
 This is not a missing idea — it is an idea applied to what was written under the
 source-management design and not to what was written before or beside it.
 
-**The split made location load-bearing, then hid it.** Eighteen test modules
-open with:
+**The split made location load-bearing, then hid it.** Nineteen test modules
+and the harness itself open with:
 
 ```python
 # Preserve the original smoke entrypoint anchor for path-sensitive fixtures.
@@ -164,7 +164,7 @@ __file__ = str(Path(__file__).resolve().parents[1] / "smoke.py")
 Each rebinds `__file__` to a file that is not itself, so `parents[1]` still
 lands on the repo root. `scout/tests/harness.py` does the same and says so:
 *"Keep moved smoke helpers anchored to the original entrypoint path."* The tests
-pass — because 18 modules assert the same falsehood in unison. A pure file-move
+pass — because 20 modules assert the same falsehood in unison. A pure file-move
 refactor was blocked by location-dependence and unblocked by lying about
 location. The next move pays the same toll.
 
@@ -248,7 +248,7 @@ modules receive. Testable consequences: a named, countable set of entrypoints
 derives a root (candidates: `source_cli`, `source_worker`, `scout/server`, the
 test runner) and every other module takes it; `Path(__file__)` outside that set
 becomes a lint failure, for which the §4 census script is already the lint;
-tests receive a root from a fixture and the 18 rebinds delete. Only then does
+tests receive a root from a fixture and the 20 rebinds delete. Only then does
 moving a file cost nothing, which is the precondition for the tree encoding
 anything at all.
 

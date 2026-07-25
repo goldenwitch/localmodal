@@ -220,7 +220,7 @@ edits.
 [sen/implement/root-provenance] Remove derived location from non-entrypoints (notstarted)
 Owns: resources/config.py, scout/tests/harness.py, and the __file__ rebinds
 across scout/tests/*.py.
-Do: apply the ruled provenance. Eighteen test modules currently rebind __file__
+Do: apply the ruled provenance. Twenty modules currently rebind __file__
 to scout/smoke.py so that parents[1] arithmetic still reaches the repository
 root, and test_ledger.py derives a subprocess PYTHONPATH from that rebound
 value; config.py addresses the checked-in configuration by its own code
