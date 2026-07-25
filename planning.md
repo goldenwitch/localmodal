@@ -34,14 +34,14 @@ after survival is settled and not before.
 Remedies belong on a ladder, strongest first: **impossible** — the structure
 leaves no way to express the mistake; **screaming** — a check fails loudly and
 early; **discipline** — someone remembers. Discipline is where a remedy lands
-when the first two are unavailable, not where it starts. Five of the six
+when the first two are unavailable, not where it starts. Six of the seven
 pitfalls below reach the first rung. One reaches the second and no further, and
 says so.
 
 ## 2. A zoo of pitfalls
 
-Six distinct animals. The first is the most common — three sightings in one
-repository — and the last two are ours from a single afternoon.
+Seven distinct animals. The first is the most common — three sightings in one
+repository — and the last three are ours from a single afternoon.
 
 ### The unpriced invariant
 
@@ -198,6 +198,38 @@ mechanism question is real but downstream.
 it. Same mechanism as arrangement-before-necessity: the graph carries the
 ordering, so the fork cannot be offered before the cardinality is known.
 
+### The unresolved pointer
+
+*Shape:* a reference is written against a base nobody stated, resolves to
+nothing, and a capable reader compensates — so the defect returns as a mild
+question rather than as a failure.
+
+*Sighting.* `proposals/scout-encapsulation.vine` at `cb71c31` attached its
+context as `planning.md` and `proposals/scout-organization.md`. Relative URIs in
+a VINE resolve against the file's own directory, so those addressed
+`proposals/planning.md` and `proposals/proposals/scout-organization.md`, neither
+of which exists. The graph validated clean at 24 tasks, because validation
+checks structure rather than resolvability. Two dispatched agents then read that
+graph, found the documents anyway, and one raised the convention as a question
+worth confirming rather than as a broken link. The sibling
+`scout-source-management.vine` had it right, which is the only reason the
+convention was recoverable at all.
+
+The structural cause is worth more than the bug. `vine_write` has operations for
+tasks, dependencies, statuses and refs, and none for attachments — so attachment
+lines are added by hand-editing. The one field with no tool support is the field
+that broke.
+
+*The question that catches it:* what is this path relative to, and does it
+resolve?
+
+*Remedy, rung 1.* Attachments are written through something that resolves the
+path as it writes, so an unresolvable reference cannot be recorded at all.
+
+*Remedy, rung 2.* Validation asserts that every relative reference resolves to
+something that exists. Structure-only validation passed a graph whose entire
+context was pointing at nothing.
+
 ## 3. Rubric
 
 Ordered by rung. Build the first two wherever they are available, and let
@@ -211,15 +243,18 @@ discipline carry only what is left.
    ahead of choosing — so the frontier enforces it and nobody has to recall it.
 3. Each name has one owning module, and everyone else takes it from there.
 4. Instruments carry a known-answer fixture and stay silent when it fails.
+5. References are written through something that resolves them, so an
+   unresolvable one cannot be recorded.
 
 **Make it scream**
 
-5. Each protected property states its price as a number, and verification
+6. Each protected property states its price as a number, and verification
    compares the size of its defense against that number.
-6. Duplicate identifiers and duplicate on-disk literals are scanned for.
-7. A ranking authorizes work once a second independent measure has ranked the
+7. Duplicate identifiers and duplicate on-disk literals are scanned for.
+8. A ranking authorizes work once a second independent measure has ranked the
    same targets, and the disagreement is published.
-8. A node that names no requirement fails validation.
+9. A node that names no requirement fails validation.
+10. Validation asserts that every reference resolves to something that exists.
 
 **Leave to discipline**
 
