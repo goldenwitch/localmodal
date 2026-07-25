@@ -11,10 +11,3 @@ design truth.
   executor service spec: serving stack, always-on topology.
 - [localmodal.vine](localmodal.vine) — execution plan, open design gaps, and
   dated evidence; this is the plan truth.
-- [planning.md](planning.md) — what makes a plan hold up, and a zoo of planning
-  pitfalls drawn from this repository's own record.
-- [scout/](scout/) — MCP search server over one source-bound publication plus
-  grounded web leads, used to answer provenance questions during design. See
-  its [README](scout/README.md).
-- [resources/](resources/) — Scout's explicit initial-source manifest,
-  source-state ledger, materializer, publication store, and search workers.
