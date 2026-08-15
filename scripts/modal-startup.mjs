@@ -11,6 +11,7 @@ const metricsFile = process.env.LOCALMODAL_METRICS_FILE ?? "artifacts/modal-star
 const maxDeployToReadySeconds = Number(process.env.LOCALMODAL_MAX_DEPLOY_TO_READY_SECONDS ?? "1500");
 const maxReadyToFirstTokenSeconds = Number(process.env.LOCALMODAL_MAX_READY_TO_FIRST_TOKEN_SECONDS ?? "180");
 const modalCommand = process.platform === "win32" ? "modal.exe" : "modal";
+const defaultRequestTimeoutMs = 60000;
 
 if (!proxyToken) {
   fail("MODAL_PROXY_TOKEN is required for the live Modal startup measurement.");
@@ -83,18 +84,24 @@ try {
 async function waitForReady(url, token, deployStart) {
   const deadline = deployStart + maxDeployToReadySeconds * 1000;
   while (performance.now() < deadline) {
-    const response = await fetchWithTimeout(`${url}/v1/models`, token);
-    if (response.ok) {
-      return {
-        readyAt: new Date().toISOString(),
-        readyElapsedMs: performance.now() - deployStart,
-      };
-    }
-    if (response.status === 401 || response.status === 403) {
-      fail(`Modal endpoint rejected the Proxy Token with HTTP ${response.status}.`);
-    }
-    if (![502, 503, 504].includes(response.status)) {
-      fail(`Modal readiness returned unexpected HTTP ${response.status}: ${await response.text()}`);
+    try {
+      const response = await fetchWithTimeout(`${url}/v1/models`, token);
+      if (response.ok) {
+        return {
+          readyAt: new Date().toISOString(),
+          readyElapsedMs: performance.now() - deployStart,
+        };
+      }
+      if (response.status === 401 || response.status === 403) {
+        fail(`Modal endpoint rejected the Proxy Token with HTTP ${response.status}.`);
+      }
+      if (![502, 503, 504].includes(response.status)) {
+        fail(`Modal readiness returned unexpected HTTP ${response.status}: ${await response.text()}`);
+      }
+    } catch (error) {
+      if (!(error instanceof Error && error.name === "AbortError")) {
+        throw error;
+      }
     }
     await delay(5000);
   }
@@ -103,6 +110,10 @@ async function waitForReady(url, token, deployStart) {
 
 async function measureFirstToken(url, token) {
   const started = performance.now();
+  const requestTimeoutMs = Math.max(
+    defaultRequestTimeoutMs,
+    (maxReadyToFirstTokenSeconds + 5) * 1000,
+  );
   const response = await fetchWithTimeout(`${url}/v1/chat/completions`, token, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
@@ -113,7 +124,7 @@ async function measureFirstToken(url, token) {
       max_tokens: 128,
       extra_body: { chat_template_kwargs: { enable_thinking: false } },
     }),
-  });
+  }, requestTimeoutMs);
   if (!response.ok || !response.body) {
     fail(`First-token request failed with HTTP ${response.status}: ${await response.text()}`);
   }
@@ -148,9 +159,9 @@ async function measureFirstToken(url, token) {
   fail("The first-token stream ended without a text token.");
 }
 
-async function fetchWithTimeout(url, token, init = {}) {
+async function fetchWithTimeout(url, token, init = {}, timeoutMs = defaultRequestTimeoutMs) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(url, {
       ...init,

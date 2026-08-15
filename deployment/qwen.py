@@ -59,6 +59,7 @@ vllm_cache = modal.Volume.from_name(
     timeout=STARTUP_TIMEOUT,
     scaledown_window=SCALEDOWN_WINDOW,
     max_containers=1,
+    env={"LOCALMODAL_MAX_MODEL_LEN": str(MAX_MODEL_LEN)},
 )
 @modal.web_server(
     port=VLLM_PORT,
@@ -66,6 +67,7 @@ vllm_cache = modal.Volume.from_name(
     requires_proxy_auth=True,
 )
 def qwen_server() -> None:
+    max_model_len = int(os.environ.get("LOCALMODAL_MAX_MODEL_LEN", str(MAX_MODEL_LEN)))
     command = [
         "vllm",
         "serve",
@@ -81,7 +83,7 @@ def qwen_server() -> None:
         "--tensor-parallel-size",
         "1",
         "--max-model-len",
-        str(MAX_MODEL_LEN),
+        str(max_model_len),
         "--enforce-eager",
         "--enable-auto-tool-choice",
         "--reasoning-parser",

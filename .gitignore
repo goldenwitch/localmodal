@@ -12,3 +12,4 @@ dist/
 *.vsix
 resources/.index/
 .vscode-test/
+artifacts/

@@ -11,5 +11,6 @@ dist/integration/**
 resources/**
 proposals/**
 scripts/**
+artifacts/**
 .vscode-test.mjs
 .github/**
