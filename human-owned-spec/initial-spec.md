@@ -69,6 +69,12 @@ before it becomes a product option.
   SecretStorage.
 - Credential lookup happens before deployment, so cancelling the wizard does
   not leave a newly deployed Modal app behind.
+- On first extension activation, localmodal offers `Connect Qwen`. Choosing
+  `Later` leaves Modal untouched; the same wizard is available from the
+  `Localmodal: Connect Qwen` command.
+- In `workspace` mode, successful onboarding deploys the app without warming
+  inference. In `on-demand` mode, onboarding stores the wire credential and
+  waits for the first request to deploy and warm it.
 
 ## 5. Extension behavior
 
@@ -114,6 +120,17 @@ The automated suite must keep these claims executable:
 9. The bundled MCP server passes a real stdio client test, lists both
   diagnostic tools, and streams a probe through a fixture Chat Completions
   endpoint.
+10. The canonical VS Code Extension Host suite opens a separate VS Code
+  instance, activates the real extension, observes the Copilot model
+  registration, executes the Start command, resolves the dynamic MCP
+  provider, and calls the packed MCP tools against a local HTTP fixture; it
+  does not start Modal or consume GPU time.
+11. The Modal child-process environment forces UTF-8 and a full local backend
+  subprocess fixture captures Unicode CLI output and parses a deploy URL.
+12. First activation offers Connect Qwen, cancellation leaves Modal untouched,
+  and the command can rerun setup after a Later choice.
+13. The opt-in Modal startup job records deploy-to-ready and ready-to-first-token
+  timings and fails against explicit ceilings, with app cleanup in all paths.
 
 ## 7. Acceptance
 

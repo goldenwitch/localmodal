@@ -25,14 +25,15 @@ Accept: the provider compiles against the VS Code API and its model catalog is e
 -> lm/model
 ---
 [lm/lifecycle] Implement extension-owned lifecycle and configuration (started)
-Expose only lifecycle and context preferences, lazy SecretStorage-backed Proxy Token acquisition, Start/Status/Stop commands, workspace and on-demand policies, and the Modal CLI adapter. Keep app name, GPU, deployment file, model, and engine as product constants.
-Accept: a fake backend and pure policy tests prove the two lifecycle modes; the real adapter can deploy, report status, wait for readiness, and stop without putting credentials or deployment choices in user settings.
+Expose only lifecycle and context preferences, activation-time Connect Qwen onboarding, lazy SecretStorage-backed Proxy Token acquisition, Start/Status/Stop commands, workspace and on-demand policies, and the Modal CLI adapter. Keep app name, GPU, deployment file, model, and engine as product constants.
+Accept: a fake backend and pure policy tests prove the two lifecycle modes; first activation can be completed or deferred without a partial deploy; the real adapter can deploy, report status, wait for readiness, and stop without putting credentials or deployment choices in user settings.
 -> lm/contracts
 ---
 [lm/deployment] Parameterize the one Modal deployment (started)
 Keep one vLLM deployment artifact for Qwen3.8-27B, accept model revision/profile/GPU at deploy time, persist model and vLLM caches, require Proxy Token auth, and cap the app at one container.
 Accept: the artifact compiles and the selected 128K profile can be deployed for a real load measurement; 32K remains the known fallback and 262K remains experimental.
 -> lm/model
+-> lm/tests/modal-startup
 ---
 [lm/mcp] Pack the inference-validation MCP witness (started)
 Bundle a stdio MCP server in the extension with `inference_status` and bounded streamed `inference_probe` tools. Resolve the current endpoint and Proxy Token only when VS Code starts the server.
@@ -51,6 +52,7 @@ Accept: tests exercise the controller with alternate implementations without imp
 -> lm/tests/token
 -> lm/tests/picker
 -> lm/tests/policy
+-> lm/tests/scenarios
 ---
 [lm/tests/config] Test the public configuration surface (reviewing)
 Assert from the extension manifest and product constants that lifecycle and context profile are the only user settings; Modal command, app name, deployment file, GPU, model revision, and engine remain fixed product choices.
@@ -71,3 +73,11 @@ Accept: workspace deploys/stops with the extension lifecycle; on-demand waits fo
 [lm/tests/mcp] Test the packed MCP protocol path (reviewing)
 Spawn the bundled `dist/mcp.js` with a fixture endpoint and connect using a real MCP stdio client. List tools, call `inference_status`, and call `inference_probe` against a streamed fixture response.
 Accept: the shipped MCP artifact speaks MCP correctly, exposes exactly the two bounded diagnostic tools, and returns streamed inference text without touching Modal.
+---
+[lm/tests/scenarios] Test the real Extension Host and packaging paths (reviewing)
+Exercise the canonical `@vscode/test-cli` Extension Host path with a real workspace, real extension activation, Copilot model registration, Start command, dynamic MCP provider, packed MCP stdio client, and local HTTP fixture. Keep the Windows user-Python CLI resolution and UTF-8 subprocess fixture in the unit suite; use `npm run package` only for packaging.
+Accept: `npm run test:integration` opens a separate VS Code instance and passes the extension/MCP integration suite without launching Modal or consuming GPU time; `npm run package` succeeds with the runtime artifacts.
+---
+[lm/tests/modal-startup] Measure the live Modal cold path (notstarted)
+Run the opt-in `scripts/modal-startup.mjs` job with CI Modal and Proxy Token secrets. Measure from `modal deploy` start through the first successful `/v1/models` response, then from readiness through the first streamed inference token; persist JSON metrics and stop the unique CI app in every exit path.
+Accept: the workflow fails when either explicit ceiling is exceeded and publishes the timing artifact for trend comparison; ordinary PR CI never allocates a GPU.

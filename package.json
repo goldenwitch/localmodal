@@ -34,12 +34,20 @@
         "title": "Localmodal: Show Status"
       },
       {
+        "command": "localmodal.showOutput",
+        "title": "Localmodal: Show Output"
+      },
+      {
         "command": "localmodal.selectContextProfile",
         "title": "Localmodal: Select Context Profile"
       },
       {
         "command": "localmodal.configureToken",
         "title": "Localmodal: Configure Modal Proxy Token"
+      },
+      {
+        "command": "localmodal.setup",
+        "title": "Localmodal: Connect Qwen"
       }
     ],
     "configuration": {
@@ -90,14 +98,21 @@
   },
   "scripts": {
     "build": "node esbuild.js",
-    "compile": "tsc -p .",
+    "compile": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p .",
     "test": "npm run compile && npm run build && node --test dist/test/**/*.test.js",
+    "test:integration": "npm run compile && npm run build && vscode-test --label extension-host",
+    "test:integration:live": "npm run compile && npm run build && vscode-test --label extension-live",
+    "test:all": "npm test && npm run test:integration",
     "package": "npm run build && npm exec --yes @vscode/vsce -- package"
   },
   "devDependencies": {
+    "@types/mocha": "^10.0.10",
     "@types/node": "^24.0.0",
     "@types/vscode": "^1.125.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
     "esbuild": "^0.25.0",
+    "mocha": "^11.7.1",
     "typescript": "^5.8.0"
   },
   "dependencies": {

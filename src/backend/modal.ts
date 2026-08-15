@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { modalProcessEnvironment, resolveModalCommand } from "./command";
 import type {
   DeploymentSpec,
   Endpoint,
@@ -6,13 +7,15 @@ import type {
   LifecycleStatus,
 } from "./types";
 
-interface ModalBackendOptions {
+export interface ModalBackendOptions {
   deploymentRoot: string;
   modalCommand: string;
   appName: string;
   deploymentFile: string;
   gpu: string;
+  commandPrefix?: string[];
   startupTimeoutMs?: number;
+  onEvent?: (message: string) => void;
 }
 
 interface CommandResult {
@@ -31,10 +34,14 @@ const RETRYABLE_STATUS_CODES = new Set([502, 503, 504]);
 
 export class ModalLifecycleBackend implements LifecycleBackend {
   private lastEndpoint: Endpoint | undefined;
+  private readonly modalCommand: string;
 
-  public constructor(private readonly options: ModalBackendOptions) {}
+  public constructor(private readonly options: ModalBackendOptions) {
+    this.modalCommand = resolveModalCommand(options.modalCommand);
+  }
 
   public async deploy(spec: DeploymentSpec): Promise<Endpoint> {
+    this.emit(`deploy: ${spec.model.id} profile=${spec.profile.id}`);
     const result = await this.runModal(
       ["deploy", "-m", this.moduleName(this.options.deploymentFile)],
       {
@@ -65,7 +72,16 @@ export class ModalLifecycleBackend implements LifecycleBackend {
   }
 
   public async status(): Promise<LifecycleStatus> {
-    const result = await this.runModal(["app", "list", "--json"]);
+    this.emit("status: checking Modal app");
+    let result: CommandResult;
+    try {
+      result = await this.runModal(["app", "list", "--json"]);
+    } catch (error) {
+      return {
+        state: "error",
+        detail: error instanceof Error ? error.message : String(error),
+      };
+    }
     if (result.code !== 0) {
       return { state: "error", detail: this.commandError("Modal status failed", result) };
     }
@@ -106,6 +122,7 @@ export class ModalLifecycleBackend implements LifecycleBackend {
     token: string,
     signal?: AbortSignal,
   ): Promise<void> {
+    this.emit(`readiness: waiting for ${endpoint.baseUrl}/v1/models`);
     const deadline = Date.now() + (this.options.startupTimeoutMs ?? DEFAULT_STARTUP_TIMEOUT_MS);
     while (Date.now() < deadline) {
       if (signal?.aborted) {
@@ -118,6 +135,7 @@ export class ModalLifecycleBackend implements LifecycleBackend {
           signal,
         });
         if (response.ok) {
+          this.emit("readiness: endpoint is ready");
           return;
         }
         if (!RETRYABLE_STATUS_CODES.has(response.status)) {
@@ -138,6 +156,7 @@ export class ModalLifecycleBackend implements LifecycleBackend {
   }
 
   public async stop(): Promise<void> {
+    this.emit(`stop: ${this.options.appName}`);
     const result = await this.runModal(["app", "stop", this.options.appName]);
     if (result.code !== 0 && !/not found|already stopped/i.test(result.stderr + result.stdout)) {
       throw new Error(this.commandError("Modal stop failed", result));
@@ -147,20 +166,33 @@ export class ModalLifecycleBackend implements LifecycleBackend {
 
   private async runModal(args: string[], environment: Record<string, string> = {}): Promise<CommandResult> {
     return new Promise((resolve, reject) => {
-      const child = spawn(this.options.modalCommand, args, {
+      const child = spawn(this.modalCommand, [...(this.options.commandPrefix ?? []), ...args], {
         cwd: this.options.deploymentRoot,
-        env: { ...process.env, ...environment },
+        env: modalProcessEnvironment({ ...process.env, ...environment }),
         windowsHide: true,
       });
       let stdout = "";
       let stderr = "";
       child.stdout.on("data", (chunk: Buffer) => {
-        stdout += chunk.toString();
+        const text = chunk.toString();
+        stdout += text;
+        this.emit(text.trimEnd());
       });
       child.stderr.on("data", (chunk: Buffer) => {
-        stderr += chunk.toString();
+        const text = chunk.toString();
+        stderr += text;
+        this.emit(`[stderr] ${text.trimEnd()}`);
       });
-      child.on("error", reject);
+      child.on("error", (error: NodeJS.ErrnoException) => {
+        if (error.code === "ENOENT") {
+          reject(new Error(
+            `Modal CLI was not found (tried '${this.modalCommand}'). ` +
+            "Install Modal and run 'modal setup', or ensure modal is on the Extension Host PATH.",
+          ));
+          return;
+        }
+        reject(error);
+      });
       child.on("close", (code) => resolve({ code: code ?? 1, stdout, stderr }));
     });
   }
@@ -176,6 +208,12 @@ export class ModalLifecycleBackend implements LifecycleBackend {
   private commandError(prefix: string, result: CommandResult): string {
     const detail = (result.stderr || result.stdout).trim();
     return detail ? `${prefix}: ${detail}` : `${prefix} (exit code ${result.code}).`;
+  }
+
+  private emit(message: string): void {
+    if (message) {
+      this.options.onEvent?.(message);
+    }
   }
 }
 

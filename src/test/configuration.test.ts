@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
 import { shouldDeployOnActivation, shouldStopOnDeactivation } from "../lifecycle";
+import { needsOnboarding, shouldDeployAfterOnboarding, shouldStopAfterOnboarding } from "../onboarding";
 import { DEPLOYMENT_DEFAULTS, USER_DEFAULTS } from "../product";
 
 test("only lifecycle and context profile are user-facing settings", () => {
@@ -10,6 +11,7 @@ test("only lifecycle and context profile are user-facing settings", () => {
     contributes: {
       configuration: { properties: Record<string, unknown> };
       mcpServerDefinitionProviders: Array<{ id: string; label: string }>;
+      commands: Array<{ command: string }>;
     };
   };
   assert.deepEqual(Object.keys(manifest.contributes.configuration.properties).sort(), [
@@ -20,6 +22,10 @@ test("only lifecycle and context profile are user-facing settings", () => {
     id: "localmodal.mcp",
     label: "localmodal inference validation",
   }]);
+  assert.equal(
+    manifest.contributes.commands.some((command) => command.command === "localmodal.setup"),
+    true,
+  );
 });
 
 test("deployment choices are fixed product defaults", () => {
@@ -40,4 +46,14 @@ test("lifecycle policy is the only activation policy choice", () => {
   assert.equal(shouldStopOnDeactivation("workspace"), true);
   assert.equal(shouldDeployOnActivation("on-demand"), false);
   assert.equal(shouldStopOnDeactivation("on-demand"), false);
+});
+
+test("first-run setup gates deployment and follows the selected lifecycle policy", () => {
+  assert.equal(needsOnboarding(false), true);
+  assert.equal(needsOnboarding(true), false);
+  assert.equal(shouldDeployAfterOnboarding("workspace"), true);
+  assert.equal(shouldDeployAfterOnboarding("on-demand"), false);
+  assert.equal(shouldStopAfterOnboarding("workspace", true), true);
+  assert.equal(shouldStopAfterOnboarding("workspace", false), false);
+  assert.equal(shouldStopAfterOnboarding("on-demand", true), false);
 });

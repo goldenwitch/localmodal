@@ -59,23 +59,94 @@ npm install
 npm test
 ```
 
+Run the canonical VS Code Extension Host integration test:
+
+```powershell
+npm run test:integration
+```
+
+This downloads/launches a separate VS Code instance, opens this workspace,
+activates the real extension, verifies the Copilot model registration, invokes
+the real Start command, resolves the dynamic MCP provider, and calls the
+packed MCP tools against a local HTTP fixture. It does not start Modal or
+consume GPU time.
+
+The same suite is available from the `Run localmodal Extension Tests` launch
+configuration. For the real cloud witness, run:
+
+```powershell
+$env:MODAL_PROXY_TOKEN = "wk-<id>.ws-<secret>"
+$env:LOCALMODAL_TEST_APP_NAME = "localmodal-qwen-live"
+npm run test:integration:live
+```
+
+The live label deploys the real Modal app, resolves the real endpoint through
+the extension, and invokes the packed MCP tools against it. It is opt-in and
+incurs GPU cost; the scheduled/manual CI workflow runs the same label with
+repository secrets and stops the unique test app afterward.
+
+Run the full unit plus Extension Host suite with:
+
+```powershell
+npm run test:all
+```
+
+Package validation remains:
+
+```powershell
+npm run package
+```
+
 Open the repository in VS Code and press `F5`. The tracked
 `.vscode/launch.json` starts an Extension Development Host and builds the
 extension first.
 
+## Measure Modal Startup
+
+The live Modal measurement is intentionally opt-in because it allocates the
+GPU. It records the complete cold path:
+
+```text
+modal deploy -> first successful /v1/models -> first streamed token
+```
+
+Run it locally only when the required Modal account and Proxy Token environment
+variables are present:
+
+```powershell
+node scripts/modal-startup.mjs
+```
+
+It writes structured metrics to `artifacts/modal-startup.json`, prints live
+Modal output, stops the CI app in a `finally` cleanup path, and fails if the
+configured deploy-to-ready or ready-to-first-token ceilings are exceeded. The
+scheduled/manual GitHub Actions workflow runs this same script with the
+credentials supplied as repository secrets.
+
 ## First Run
 
 1. Open any VS Code workspace folder.
-2. Open GitHub Copilot Chat and choose `Qwen3.8-27B (Modal)` in the model
-   picker.
-3. Send a normal chat request. The first request opens the Modal Proxy Token
-  settings page and prompts for the `wk-...` ID and masked `ws-...` secret if
-  they are not already stored, then starts the GPU container if it is cold.
+2. On first activation, choose `Connect Qwen` in the localmodal notification.
+3. The extension checks the Modal CLI, opens the Proxy Token settings page, and
+  prompts for the `wk-...` ID and masked `ws-...` secret.
+4. In `workspace` mode, the extension deploys the app after setup. In
+  `on-demand` mode, deployment waits until the first model request.
+5. Open GitHub Copilot Chat and choose `Qwen3.8-27B (Modal)` in the model
+  picker, then send a normal request.
 
 The model picker is the model-selection UI. There is currently one production
 model in the catalog, so localmodal does not add a second model-selection step.
 The context profile is an advanced setting; leave the default in place unless
 you are measuring or diagnosing a specific context limit.
+
+Choosing `Later` leaves Modal untouched. Rerun the setup with `Localmodal:
+Connect Qwen` from the Command Palette.
+
+During setup and deployment, the status bar shows a spinning Qwen state, a
+progress notification describes the current phase, and Modal's live output is
+shown in the `localmodal` Output channel. Use `Localmodal: Show Output` to
+reopen it. A first image build can take several minutes; the output channel is
+the authoritative indication that the subprocess is still producing progress.
 
 ## Validate The Inference Path
 
@@ -130,9 +201,11 @@ deployment. It is not silently upgraded.
 Commands are available from the Command Palette:
 
 - `Localmodal: Configure Modal Proxy Token`
+- `Localmodal: Connect Qwen`
 - `Localmodal: Start Model`
 - `Localmodal: Stop Model`
 - `Localmodal: Show Status`
+- `Localmodal: Show Output`
 - `Localmodal: Select Context Profile`
 
 The main settings are:

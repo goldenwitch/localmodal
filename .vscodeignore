@@ -2,9 +2,14 @@
 .vscode/**
 node_modules/**
 src/test/**
+src/integration/**
 dist/**/*.map
 dist/test/**
+dist/integration/**
 **/__pycache__/**
 **/*.pyc
 resources/**
 proposals/**
+scripts/**
+.vscode-test.mjs
+.github/**

@@ -11,3 +11,4 @@ node_modules/
 dist/
 *.vsix
 resources/.index/
+.vscode-test/

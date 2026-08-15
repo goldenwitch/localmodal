@@ -15,6 +15,7 @@ export class ModelController {
     private readonly backend: LifecycleBackend,
     private readonly state: StateStore,
     private readonly secrets: SecretStore,
+    private readonly onReady?: () => PromiseLike<void> | void,
   ) {}
 
   public async start(modelId: string, profileId: string): Promise<Endpoint> {
@@ -66,6 +67,7 @@ export class ModelController {
     }
 
     await this.backend.ensureReady(endpoint, token);
+    await this.onReady?.();
     return endpoint;
   }
 
