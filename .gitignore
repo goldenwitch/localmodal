@@ -5,3 +5,11 @@ __pycache__/
 # Scratch (throwaway working data — anywhere in the tree)
 _probe.py
 **/scratch/
+
+# VS Code extension build output and dependencies.
+node_modules/
+dist/
+*.vsix
+resources/.index/
+.vscode-test/
+artifacts/
