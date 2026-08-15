@@ -22,6 +22,45 @@ The current production target is
 
 The extension does not store a Modal token in the workspace or repository.
 
+## Store Local Test Credentials
+
+On Windows, the repository includes a small local CLI for live testing. It
+stores an encrypted credential bundle under
+`%LOCALAPPDATA%\localmodal\credentials.dpapi` using Windows DPAPI for the
+current Windows user. Credential values are entered without terminal echo,
+and are injected only into the child process started by `run`.
+
+Store the three values used by the live Modal paths:
+
+```powershell
+npm run credentials -- set MODAL_TOKEN_ID
+npm run credentials -- set MODAL_TOKEN_SECRET
+npm run credentials -- set MODAL_PROXY_TOKEN
+```
+
+The CLI never prints stored values. Inspect names or remove a value with:
+
+```powershell
+npm run credentials -- list
+npm run credentials -- remove MODAL_PROXY_TOKEN
+```
+
+Run a live test with the decrypted values available only to that process tree:
+
+```powershell
+npm run credentials -- run -- npm run test:integration:live
+```
+
+The same wrapper can run the startup measurement:
+
+```powershell
+npm run credentials -- run -- node scripts/modal-startup.mjs
+```
+
+The store is tied to the current Windows user and machine protection context;
+it is not a portable backup and is not used by the packaged extension. The
+CLI is intentionally Windows-only because it relies on Windows DPAPI.
+
 ## Install The Extension
 
 There are two supported installation paths.

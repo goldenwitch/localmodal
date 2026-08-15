@@ -106,7 +106,7 @@ suite("localmodal Extension Host", () => {
       const probe = await client.callTool({
         name: "inference_probe",
         arguments: { prompt: "prove the Extension Host path" },
-      });
+      }, undefined, live ? { timeout: 180000, maxTotalTimeout: 180000 } : undefined);
       assert.doesNotMatch(JSON.stringify(probe), /isError/);
       if (live) {
         assert.match(JSON.stringify(probe), /model=Qwen\/Qwen3\.8-27B/);

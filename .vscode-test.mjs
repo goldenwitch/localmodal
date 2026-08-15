@@ -16,6 +16,14 @@ const common = {
   },
 };
 
+const live = {
+  ...common,
+  mocha: {
+    ...common.mocha,
+    timeout: 25 * 60 * 1000,
+  },
+};
+
 export default defineConfig([
   {
     ...common,
@@ -27,7 +35,7 @@ export default defineConfig([
     },
   },
   {
-    ...common,
+    ...live,
     label: "extension-live",
     env: {
       LOCALMODAL_LIVE_TEST: "1",
