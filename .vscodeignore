@@ -1,0 +1,10 @@
+.git/**
+.vscode/**
+node_modules/**
+src/test/**
+dist/**/*.map
+dist/test/**
+**/__pycache__/**
+**/*.pyc
+resources/**
+proposals/**

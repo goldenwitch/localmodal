@@ -1,0 +1,1 @@
+"""Modal deployment artifacts used by the localmodal VS Code extension."""

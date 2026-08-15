@@ -1,0 +1,107 @@
+{
+  "name": "localmodal",
+  "displayName": "localmodal",
+  "description": "Use a Modal-hosted Qwen model in VS Code Copilot Chat.",
+  "version": "0.0.1",
+  "publisher": "goldenwitch",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/goldenwitch/localmodal.git"
+  },
+  "engines": {
+    "vscode": "^1.133.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "localmodal.start",
+        "title": "Localmodal: Start Model"
+      },
+      {
+        "command": "localmodal.stop",
+        "title": "Localmodal: Stop Model"
+      },
+      {
+        "command": "localmodal.status",
+        "title": "Localmodal: Show Status"
+      },
+      {
+        "command": "localmodal.selectContextProfile",
+        "title": "Localmodal: Select Context Profile"
+      },
+      {
+        "command": "localmodal.configureToken",
+        "title": "Localmodal: Configure Modal Proxy Token"
+      }
+    ],
+    "configuration": {
+      "title": "Localmodal",
+      "properties": {
+        "localmodal.lifecycle": {
+          "type": "string",
+          "enum": [
+            "on-demand",
+            "workspace"
+          ],
+          "enumDescriptions": [
+            "Deploy on the first Copilot request and stop only when explicitly requested.",
+            "Ensure the app is deployed when the workspace opens and stop it when the extension deactivates."
+          ],
+          "default": "workspace",
+          "description": "When localmodal should manage the Modal app deployment."
+        },
+        "localmodal.contextProfile": {
+          "type": "string",
+          "enum": [
+            "32k",
+            "128k",
+            "262k"
+          ],
+          "enumDescriptions": [
+            "Conservative first-load profile.",
+            "Long-context profile for normal repository work; requires measurement on the selected GPU.",
+            "Qwen native context ceiling; experimental until measured."
+          ],
+          "default": "128k",
+          "description": "The context profile advertised to Copilot Chat and sent to the deployment."
+        }
+      }
+    },
+    "languageModelChatProviders": [
+      {
+        "vendor": "localmodal",
+        "displayName": "localmodal"
+      }
+    ],
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "localmodal.mcp",
+        "label": "localmodal inference validation"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node esbuild.js",
+    "compile": "tsc -p .",
+    "test": "npm run compile && npm run build && node --test dist/test/**/*.test.js",
+    "package": "npm run build && npm exec --yes @vscode/vsce -- package"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/vscode": "^1.125.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.4.3"
+  }
+}
