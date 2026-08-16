@@ -131,7 +131,7 @@ test("the lifecycle boundary supports start, readiness, status, and stop", async
   assert.equal((await controller.status()).state, "stopped");
 });
 
-test("deployment does not read the wire token until readiness is requested", async () => {
+test("deployment does not read the Proxy Token until readiness is requested", async () => {
   const backend = new FakeLifecycleBackend();
   const secrets = new MemorySecretStore();
   const controller = new ModelController(
@@ -146,7 +146,7 @@ test("deployment does not read the wire token until readiness is requested", asy
   assert.equal(backend.deployed?.profile.id, "128k");
 });
 
-test("a missing wire token fails before touching the backend", async () => {
+test("a missing Proxy Token fails before touching the backend", async () => {
   const backend = new FakeLifecycleBackend();
   const secrets = new MemorySecretStore();
   const controller = new ModelController(
@@ -165,17 +165,15 @@ test("a missing wire token fails before touching the backend", async () => {
   assert.equal(backend.deployed, undefined);
 });
 
-test("the production catalog presents one Qwen model per selected profile", () => {
+test("the production catalog presents one measured Qwen model per selected profile", () => {
   const catalog = new FixtureCatalog([QWEN38_27B]);
 
-  const measured = presentModels(catalog, "32k");
-  assert.equal(measured.length, 1);
-  assert.equal(measured[0].definition.id, QWEN38_27B.id);
-  assert.equal(measured[0].version, "27B-32k");
-  assert.equal(measured[0].detail, "Modal / 32k");
-  assert.equal(measured[0].maxInputTokens, 28672);
-
-  const unmeasured = presentModels(catalog, "128k");
-  assert.equal(unmeasured.length, 1);
-  assert.equal(unmeasured[0].detail, "Modal / 128k / unmeasured");
+  for (const profile of ["32k", "128k", "262k"] as const) {
+    const presented = presentModels(catalog, profile);
+    assert.equal(presented.length, 1);
+    assert.equal(presented[0].definition.id, QWEN38_27B.id);
+    assert.equal(presented[0].version, `27B-${profile}`);
+    assert.equal(presented[0].detail, `Modal / ${profile}`);
+  }
+  assert.equal(presentModels(catalog, "32k")[0].maxInputTokens, 28672);
 });

@@ -111,7 +111,7 @@ packed MCP tools against a local HTTP fixture. It does not start Modal or
 consume GPU time.
 
 The same suite is available from the `Run localmodal Extension Tests` launch
-configuration. For the real cloud witness, run:
+configuration. For the real cloud validation, run:
 
 ```powershell
 $env:MODAL_PROXY_TOKEN = "wk-<id>.ws-<secret>"
@@ -119,7 +119,7 @@ $env:LOCALMODAL_TEST_APP_NAME = "localmodal-qwen-live"
 npm run test:integration:live
 ```
 
-The live label deploys the real Modal app, resolves the real endpoint through
+The live test label deploys the real Modal app, resolves the real endpoint through
 the extension, and invokes the packed MCP tools against it. It is opt-in and
 incurs GPU cost; the scheduled/manual CI workflow runs the same label with
 repository secrets and stops the unique test app afterward.
@@ -209,7 +209,7 @@ Use the localmodal inference probe with the prompt "Reply with exactly one sente
 That exercises the complete loop: Qwen emits a tool call, VS Code invokes the
 extension-provided MCP server, the MCP server calls the Modal endpoint, and the
 tool result returns to Qwen for the final response. The MCP tools are
-diagnostic witnesses, not part of the model's production tool catalog.
+diagnostic tools, not part of the model's production tool catalog.
 
 ## Lifecycle And Cost
 
@@ -228,9 +228,9 @@ The context profiles are:
 
 | Profile | Meaning |
 | --- | --- |
-| `32k` | Measured first-load fallback. Use this for the first diagnostic request if the long-context profile has not been witnessed on your account. |
-| `128k` | Extension default and intended repository-work profile; still marked unmeasured until a real Modal load/request witness exists. |
-| `262k` | Qwen's native context ceiling; experimental. |
+| `32k` | Measured cached profile and conservative fallback. |
+| `128k` | Measured cached profile and extension default for repository work. |
+| `262k` | Measured cached profile at Qwen's native context ceiling; experimental. |
 
 The selected profile is advertised to Copilot and passed to the Modal
 deployment. It is not silently upgraded.
@@ -246,6 +246,7 @@ Commands are available from the Command Palette:
 - `Localmodal: Show Status`
 - `Localmodal: Show Output`
 - `Localmodal: Select Context Profile`
+- `Localmodal: Report a Problem`
 
 The main settings are:
 
@@ -272,3 +273,12 @@ those boundaries without adding unused production paths.
 
 The design authority is [human-owned-spec/initial-spec.md](human-owned-spec/initial-spec.md).
 The execution graph is [localmodal.vine](localmodal.vine).
+
+## Report A Problem
+
+If setup, deployment, Copilot responses, or the diagnostic tools fail, use
+`Localmodal: Report a Problem` or open the repository's
+[GitHub issue form](https://github.com/goldenwitch/localmodal/issues/new?template=bug_report.yml).
+Include the lifecycle mode, context profile, the step that failed, and the
+relevant `localmodal` Output channel messages. Never include a Modal Proxy
+Token or other credentials in an issue.

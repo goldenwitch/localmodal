@@ -18,6 +18,7 @@ import { shouldDeployOnActivation, type LifecyclePolicy } from "./lifecycle";
 import { VscodeSecretStore, VscodeStateStore } from "./state/vscode";
 
 const catalog = new StaticModelCatalog([QWEN38_27B]);
+const ISSUE_URL = "https://github.com/goldenwitch/localmodal/issues/new?template=bug_report.yml";
 let stopWorkspaceApp: (() => Promise<void>) | undefined;
 
 export interface LocalmodalExtensionApi {
@@ -149,6 +150,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Localm
         prompt: false,
       });
     }),
+    vscode.commands.registerCommand("localmodal.reportIssue", () => openIssueForm()),
   );
 
   const integrationTest = process.env.LOCALMODAL_TEST_MODE === "1";
@@ -215,8 +217,18 @@ async function runCommand(label: string, action: () => Promise<void>): Promise<v
   try {
     await action();
   } catch (error) {
-    vscode.window.showErrorMessage(`${label}: ${error instanceof Error ? error.message : String(error)}`);
+    const reportAction = await vscode.window.showErrorMessage(
+      `${label}: ${error instanceof Error ? error.message : String(error)}`,
+      "Open GitHub Issue",
+    );
+    if (reportAction === "Open GitHub Issue") {
+      await openIssueForm();
+    }
   }
+}
+
+async function openIssueForm(): Promise<void> {
+  await vscode.env.openExternal(vscode.Uri.parse(ISSUE_URL));
 }
 
 interface FirstRunOptions {

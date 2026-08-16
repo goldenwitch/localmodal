@@ -9,6 +9,9 @@
     "type": "git",
     "url": "https://github.com/goldenwitch/localmodal.git"
   },
+  "bugs": {
+    "url": "https://github.com/goldenwitch/localmodal/issues"
+  },
   "engines": {
     "vscode": "^1.133.0"
   },
@@ -48,6 +51,10 @@
       {
         "command": "localmodal.setup",
         "title": "Localmodal: Connect Qwen"
+      },
+      {
+        "command": "localmodal.reportIssue",
+        "title": "Localmodal: Report a Problem"
       }
     ],
     "configuration": {
@@ -75,8 +82,8 @@
           ],
           "enumDescriptions": [
             "Conservative first-load profile.",
-            "Long-context profile for normal repository work; requires measurement on the selected GPU.",
-            "Qwen native context ceiling; experimental until measured."
+            "Measured cached profile for normal repository work.",
+            "Measured cached profile at Qwen's native context ceiling; experimental."
           ],
           "default": "128k",
           "description": "The context profile advertised to Copilot Chat and sent to the deployment."

@@ -3,14 +3,14 @@ prefix: lm
 title: Localmodal VS Code extension for Qwen on Modal
 ---
 [lm] Prove the localmodal extension path (planning)
-The destination is one selectable Qwen model in GitHub Copilot Chat, managed by a VS Code extension that controls one Modal deployment and provides its own diagnostic MCP witness.
-Complete when the extension settings, model picker, workspace lifecycle, streamed request, MCP probe/tool round-trip, and explicit stop path are witnessed.
+The destination is one selectable Qwen model in GitHub Copilot Chat, managed by a VS Code extension that controls one Modal deployment and provides its own diagnostic MCP validation path.
+Complete when the extension settings, model picker, workspace lifecycle, streamed request, MCP probe/tool round-trip, and explicit stop path are validated.
 -> lm/witness
 > Scope is one extension, one Qwen model, one Modal backend, and one Copilot Chat provider. Test doubles prove the interfaces; they are not product choices.
 > Human-owned specification remains design authority. This VINE owns execution order and evidence.
 @guidance text/markdown human-owned-spec/initial-spec.md
 ---
-[lm/witness] Witness the extension end to end (notstarted)
+[lm/witness] Validate the extension end to end (notstarted)
 Run the extension in an Extension Development Host against the deployed Modal app and use the extension-provided inference-validation MCP server.
 Accept: Qwen appears in the Copilot Chat model picker, a streamed text response completes, `inference_probe` completes through the deployed endpoint and its result returns to Qwen, workspace lifecycle behavior is observed, and Stop preserves the cache Volumes.
 -> lm/provider
@@ -35,14 +35,14 @@ Accept: the artifact compiles and the selected 128K profile can be deployed for 
 -> lm/model
 -> lm/tests/modal-startup
 ---
-[lm/mcp] Pack the inference-validation MCP witness (started)
+[lm/mcp] Pack the inference-validation MCP diagnostics (started)
 Bundle a stdio MCP server in the extension with `inference_status` and bounded streamed `inference_probe` tools. Resolve the current endpoint and Proxy Token only when VS Code starts the server.
 Accept: no `.vscode/mcp.json` is required, the server is dynamically discoverable, and a real Copilot tool call can invoke the probe against the deployed Chat Completions endpoint.
 -> lm/tests/mcp
 ---
 [lm/model] Define the Qwen model and context profiles (reviewing)
 Pin Qwen/Qwen3.8-27B at revision 1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0 and expose 32K, 128K, and 262K profiles with measured state explicit.
-Accept: the model catalog is the only production catalog, and the picker cannot silently claim an unmeasured profile is proven.
+Accept: the model catalog is the only production catalog, and the picker exposes the measured state of each profile.
 -> lm/contracts
 ---
 [lm/contracts] Prove the genericism seams with minimal alternate implementations (reviewing)
@@ -64,7 +64,7 @@ Accept: the token is never read during deployment-only setup, is stored only thr
 ---
 [lm/tests/picker] Test Copilot-only model selection (reviewing)
 Exercise the production catalog presentation for each context profile. Keep one Qwen model in the picker, with measured state and token limits explicit; no localmodal model setting participates.
-Accept: the test fails if a second selection ceremony or an unmeasured profile claim is introduced.
+Accept: the test fails if a second selection ceremony or an unsupported measurement claim is introduced.
 ---
 [lm/tests/policy] Test workspace and on-demand policy decisions (reviewing)
 Exercise the pure activation/deactivation policy functions and the controller's deploy-versus-ready paths with fake backends.

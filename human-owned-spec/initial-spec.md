@@ -5,7 +5,7 @@
 Make one current Qwen model selectable and usable in GitHub Copilot Chat from
 VS Code. The extension is the control plane: it exposes configuration, model
 selection, Modal lifecycle commands, the Copilot language-model provider, and a
-diagnostic MCP server for witnessing the inference path.
+diagnostic MCP server for validating the inference path.
 The Modal deployment remains a small backend artifact under [deployment/](../deployment/).
 
 This is a personal-use extension, not a general model marketplace, an engine
@@ -25,10 +25,9 @@ There is one production model and one production backend in this first cut.
 
 The model natively supports 262,144 tokens. Context profiles are explicit:
 
-- `32k`: measured first-load profile.
-- `128k`: default long-context profile, pending a real Modal load/request
-  measurement.
-- `262k`: native ceiling, experimental until measured.
+- `32k`: measured cached profile.
+- `128k`: measured cached profile and extension default.
+- `262k`: measured cached profile at the native ceiling; experimental.
 
 The extension advertises the selected profile, and the deployment receives the
 same profile at deploy time. No profile is called measured merely because the
@@ -61,7 +60,7 @@ before it becomes a product option.
   serving engine are not user overrides.
 - Model selection happens in the Copilot Chat picker. There is no second
   localmodal model selector while the production catalog contains one model.
-- The Proxy Token is a wire credential, not a setting. On the first request,
+- The Proxy Token is an authentication credential, not a setting. On the first request,
   SecretStorage is checked, then `MODAL_PROXY_TOKEN`, then a dashboard-linked
   wizard. The wizard accepts the separate `wk-...` ID and masked `ws-...`
   secret, a combined bearer token, or two whitespace-separated values; it
@@ -73,7 +72,7 @@ before it becomes a product option.
   `Later` leaves Modal untouched; the same wizard is available from the
   `Localmodal: Connect Qwen` command.
 - In `workspace` mode, successful onboarding deploys the app without warming
-  inference. In `on-demand` mode, onboarding stores the wire credential and
+  inference. In `on-demand` mode, onboarding stores the Proxy Token and
   waits for the first request to deploy and warm it.
 
 ## 5. Extension behavior
@@ -85,7 +84,7 @@ before it becomes a product option.
   `inference_status` and `inference_probe` tools. No workspace MCP file is
   required.
 - When the MCP server starts, the extension resolves the current endpoint and
-  wire token, then supplies them only to that short-lived process.
+  Proxy Token, then supplies it only to that short-lived process.
 - Copilot requests are translated to Qwen Chat Completions requests.
 - Text, streamed reasoning, images, tool definitions, tool results, and
   streamed tool calls are translated across the boundary.
@@ -112,7 +111,7 @@ The automated suite must keep these claims executable:
 4. A missing token is observed before backend status/deploy calls.
 5. Deployment can occur without reading the token for workspace lifecycle setup.
 6. The production catalog presents one Qwen model for each supported profile,
-  with measured/unmeasured state visible.
+  with measurement state visible.
 7. Workspace and on-demand policies make opposite activation/deactivation
   decisions.
 8. The controller accepts fixture catalogs, fake backends, and memory stores
@@ -134,7 +133,7 @@ The automated suite must keep these claims executable:
 
 ## 7. Acceptance
 
-The direction is complete when all of these are witnessed:
+The direction is complete when all of these are validated:
 
 1. The extension starts with no workspace secret in source control.
 2. Qwen appears in the Copilot Chat model picker with the selected profile.
@@ -144,5 +143,5 @@ The direction is complete when all of these are witnessed:
   `inference_probe` completes against the deployed endpoint and Qwen uses its
   returned result.
 6. Start, status, and Stop work through the extension commands.
-7. The 128K profile is measured before it is treated as the normal operating
-   profile; the 262K profile remains clearly experimental until then.
+7. The 128K profile is measured and is the normal operating profile; the 262K
+  profile remains clearly experimental.

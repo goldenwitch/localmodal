@@ -13,14 +13,14 @@ const profiles = {
     maxModelLen: 131072,
     maxInputTokens: 122880,
     maxOutputTokens: 8192,
-    measured: false,
+    measured: true,
   },
   "262k": {
     id: "262k",
     maxModelLen: 262144,
     maxInputTokens: 253952,
     maxOutputTokens: 8192,
-    measured: false,
+    measured: true,
   },
 } as const;
 

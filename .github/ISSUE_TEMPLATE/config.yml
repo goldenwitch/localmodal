@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a localmodal problem
+    url: https://github.com/goldenwitch/localmodal/issues/new?template=bug_report.yml
+    about: Use the bug report form for setup, deployment, Copilot, or inference failures.

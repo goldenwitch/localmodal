@@ -26,6 +26,10 @@ test("only lifecycle and context profile are user-facing settings", () => {
     manifest.contributes.commands.some((command) => command.command === "localmodal.setup"),
     true,
   );
+  assert.equal(
+    manifest.contributes.commands.some((command) => command.command === "localmodal.reportIssue"),
+    true,
+  );
 });
 
 test("deployment choices are fixed product defaults", () => {

@@ -64,6 +64,7 @@ suite("localmodal Extension Host", () => {
     assert.ok(commands.includes("localmodal.start"));
     assert.ok(commands.includes("localmodal.setup"));
     assert.ok(commands.includes("localmodal.showOutput"));
+    assert.ok(commands.includes("localmodal.reportIssue"));
     assert.equal((await api.getStatus()).state, "stopped");
   });
 

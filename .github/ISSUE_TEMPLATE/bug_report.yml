@@ -1,0 +1,63 @@
+name: Bug report
+description: Report a problem using localmodal
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve localmodal. Do not include Modal Proxy Tokens, secrets, or other credentials.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the result you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the smallest sequence that shows the problem.
+    validations:
+      required: true
+  - type: dropdown
+    id: lifecycle
+    attributes:
+      label: Lifecycle mode
+      options:
+        - workspace
+        - on-demand
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: context-profile
+    attributes:
+      label: Context profile
+      options:
+        - 32k
+        - 128k
+        - 262k
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: vscode-version
+    attributes:
+      label: VS Code version
+      placeholder: 1.133.0
+  - type: textarea
+    id: output
+    attributes:
+      label: Relevant output
+      description: Paste redacted messages from the localmodal Output channel or terminal.
+      render: text
+  - type: checkboxes
+    id: safe-to-share
+    attributes:
+      label: Before submitting
+      options:
+        - label: I removed tokens, secrets, and private endpoints from this report.
+          required: true
