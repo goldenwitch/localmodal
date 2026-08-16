@@ -1,0 +1,48 @@
+vine 1.2.0
+prefix: mx
+title: Localmodal model catalog expansion
+---
+[mx] Extend localmodal beyond Qwen (planning)
+Add one additional model family to the developer tool without adding a second model-selection ceremony or independent lifecycle. The model family is selected only after compatibility and operating-cost evidence exists.
+-> mx/canary
+> One active Modal deployment remains the lifecycle boundary; selecting another catalog entry reconciles that deployment to the selected model.
+> No model family is a product commitment until the discovery task records its Hub identity, revision, license/access conditions, vLLM compatibility, and measured resource regime.
+---
+[mx/discovery] Select the next model family from evidence (notstarted)
+Research candidate families against the current OpenAI-compatible vLLM path and the developer-tool constraints. Record one candidate model ID and revision, license/access requirements, context and GPU requirements, parser/template needs, and reasons adjacent candidates were deferred.
+Accept: one candidate is named with source links and a bounded compatibility hypothesis; no second family is added in the same pass.
+---
+[mx/authoring] Define the model authoring contract (notstarted)
+Extend the model definition boundary so a new model can declare identity, profiles, capabilities, and a typed runtime-adapter selection without editing lifecycle orchestration or MCP plumbing.
+-> mx/discovery
+Accept: adding a model that fits an existing adapter requires a model definition and catalog registration only; unsupported behavior is rejected by the type boundary or an explicit adapter error.
+---
+[mx/adapter] Extract the typed runtime adapter boundary (notstarted)
+Move Qwen-specific deployment flags and request/template behavior behind a typed adapter. Preserve the current Qwen behavior as the first adapter and keep the common OpenAI-compatible streaming contract shared.
+-> mx/authoring
+Accept: Qwen behavior is unchanged under its adapter, and a second adapter can own family-specific parser/template options without conditionals spread through provider, controller, or MCP code.
+---
+[mx/catalog] Register a multi-model production catalog (notstarted)
+Replace the single-model construction with an explicit production catalog and a declared default. Keep one active deployment and preserve the existing Copilot model-picker contract.
+-> mx/authoring
+-> mx/adapter
+Accept: all catalog entries are presented through the same provider path, the default remains explicit, and no deployment choice becomes a new workspace setting.
+---
+[mx/deployment] Reconcile one active deployment across models (notstarted)
+Define how endpoint state, Modal app identity, cache identity, and stop/start behavior change when the selected model changes. Keep model switching explicit and avoid silently serving a different model from saved endpoint state.
+-> mx/catalog
+Accept: a model switch cannot reuse an endpoint or cache for the wrong model, and lifecycle tests cover start, switch, readiness, and stop with one active deployment.
+---
+[mx/contracts] Prove the authoring and adapter seams (notstarted)
+Add contract tests for model definitions, adapter selection, catalog presentation, deployment-spec translation, provider request options, and the one-deployment model-switch policy.
+-> mx/authoring
+-> mx/adapter
+-> mx/catalog
+-> mx/deployment
+Accept: fixture models exercise the same interfaces as production models, while unsupported capabilities fail at a named boundary.
+---
+[mx/canary] Witness one additional family end to end (notstarted)
+Implement the selected canary model through the authoring contract, run ordinary fixture/Extension Host tests, then run one opt-in Modal deployment and inference witness at a declared context profile.
+-> mx/discovery
+-> mx/contracts
+Accept: the canary appears in the Copilot picker, uses the shared provider and diagnostic MCP path, completes a real streamed request through Modal, and records timing/cost conditions; the result determines whether the family expands further.
