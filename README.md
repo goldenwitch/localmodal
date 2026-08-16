@@ -4,7 +4,7 @@ Use one Modal-hosted Qwen model in GitHub Copilot Chat from VS Code.
 
 The extension owns configuration, encrypted credential storage, Modal
 deployment lifecycle, model selection, the streamed Copilot Chat provider, and
-a diagnostic MCP server for validating the inference path.
+an MCP server for model delegation and lifecycle management (`delegate`, `up`, `down`).
 The current production target is
 [Qwen/Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B) at Hub revision
 `1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0`, served by vLLM on one Modal
@@ -166,8 +166,8 @@ credentials supplied as repository secrets.
 
 1. Open any VS Code workspace folder.
 2. On first activation, choose `Connect Qwen` in the localmodal notification.
-3. The extension checks the Modal CLI, opens the Proxy Token settings page, and
-  prompts for the `wk-...` ID and masked `ws-...` secret.
+3. The extension opens the Proxy Token settings page, prompts for the `wk-...`
+  ID and masked `ws-...` secret, and verifies the Modal CLI.
 4. In `workspace` mode, the extension deploys the app after setup. In
   `on-demand` mode, deployment waits until the first model request.
 5. Open GitHub Copilot Chat and choose `Qwen3.8-27B (Modal)` in the model
@@ -187,29 +187,29 @@ shown in the `localmodal` Output channel. Use `Localmodal: Show Output` to
 reopen it. A first image build can take several minutes; the output channel is
 the authoritative indication that the subprocess is still producing progress.
 
-## Validate The Inference Path
+## Model Delegation And MCP Control
 
-The extension dynamically provides an MCP server named `localmodal inference
-validation`. No `.vscode/mcp.json` file or separate MCP installation is
-needed. When Copilot starts the server, localmodal supplies the current Modal
-endpoint and the SecretStorage token to the short-lived stdio process.
+The extension dynamically provides an MCP server named `localmodal`. No
+`.vscode/mcp.json` file or separate MCP installation is needed. When VS Code or
+an agent starts the server, localmodal connects over stdio immediately,
+injecting credentials and configuration without blocking on GPU provisioning.
 
-The server exposes two diagnostic tools:
+The server exposes three tools:
 
-- `inference_status`: checks `/v1/models` and reports the endpoint response.
-- `inference_probe`: sends one bounded streamed Chat Completions request and
-  returns the streamed text.
+- `delegate`: passes a task and optional context to the self-hosted model. If
+  the deployment is stopped or cold, it performs best-effort deployment and
+  warmup (`up`), emitting progress before returning the model's response.
+- `up`: explicitly starts and warms the Modal deployment, returning endpoint
+  readiness and timing metadata.
+- `down`: explicitly stops the active Modal deployment to halt compute billing
+  while preserving cache Volumes.
 
-With `Qwen3.8-27B (Modal)` selected, ask Copilot Chat:
+With Copilot Chat or any agent framework supporting MCP tools, agents can
+delegate sub-tasks to Qwen:
 
 ```text
-Use the localmodal inference probe with the prompt "Reply with exactly one sentence proving the inference path is live." Then report the returned model and response.
+Use the localmodal delegate tool with task "Summarize the architectural seams in this repository" and provide the file contents as context.
 ```
-
-That exercises the complete loop: Qwen emits a tool call, VS Code invokes the
-extension-provided MCP server, the MCP server calls the Modal endpoint, and the
-tool result returns to Qwen for the final response. The MCP tools are
-diagnostic tools, not part of the model's production tool catalog.
 
 ## Lifecycle And Cost
 

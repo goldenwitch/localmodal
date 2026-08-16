@@ -99,7 +99,7 @@
     "mcpServerDefinitionProviders": [
       {
         "id": "localmodal.mcp",
-        "label": "localmodal inference validation"
+        "label": "localmodal"
       }
     ]
   },

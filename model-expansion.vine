@@ -45,4 +45,4 @@ Accept: fixture models exercise the same interfaces as production models, while 
 Implement the selected canary model through the authoring contract, run ordinary fixture/Extension Host tests, then run one opt-in Modal deployment and inference witness at a declared context profile.
 -> mx/discovery
 -> mx/contracts
-Accept: the canary appears in the Copilot picker, uses the shared provider and diagnostic MCP path, completes a real streamed request through Modal, and records timing/cost conditions; the result determines whether the family expands further.
+Accept: the canary appears in the Copilot picker, uses the shared provider and delegation MCP path, completes a real streamed request through Modal, and records timing/cost conditions; the result determines whether the family expands further.

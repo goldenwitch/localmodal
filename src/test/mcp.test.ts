@@ -5,7 +5,7 @@ import test from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-test("the packed MCP server exposes and exercises the inference probe", async () => {
+test("the packed MCP server exposes delegate, up, and down tools", async () => {
   const httpServer = createServer((request, response) => {
     if (request.url === "/v1/models" && request.method === "GET") {
       response.writeHead(200, { "Content-Type": "application/json" });
@@ -52,18 +52,23 @@ test("the packed MCP server exposes and exercises the inference probe", async ()
     const tools = await client.listTools();
     assert.deepEqual(
       tools.tools.map((tool) => tool.name).sort(),
-      ["inference_probe", "inference_status"],
+      ["delegate", "down", "up"],
     );
 
-    const status = await client.callTool({ name: "inference_status", arguments: {} });
-    assert.match(JSON.stringify(status), /HTTP 200/);
+    const upResult = await client.callTool({ name: "up", arguments: {} });
+    assert.match(JSON.stringify(upResult), /Endpoint ready/);
+    assert.doesNotMatch(JSON.stringify(upResult), /isError/);
 
-    const probe = await client.callTool({
-      name: "inference_probe",
-      arguments: { prompt: "prove the fixture path" },
+    const delegateResult = await client.callTool({
+      name: "delegate",
+      arguments: { task: "prove the fixture path" },
     });
-    assert.match(JSON.stringify(probe), /fixture streamed response/);
-    assert.doesNotMatch(JSON.stringify(probe), /isError/);
+    assert.match(JSON.stringify(delegateResult), /fixture streamed response/);
+    assert.doesNotMatch(JSON.stringify(delegateResult), /isError/);
+
+    const downResult = await client.callTool({ name: "down", arguments: {} });
+    assert.match(JSON.stringify(downResult), /Localmodal stopped/);
+    assert.doesNotMatch(JSON.stringify(downResult), /isError/);
   } finally {
     await client.close();
     await new Promise<void>((resolveClose, rejectClose) => {

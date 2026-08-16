@@ -3,16 +3,16 @@ prefix: lm
 title: Localmodal VS Code extension for Qwen on Modal
 ---
 [lm] Prove the localmodal extension path (planning)
-The destination is one selectable Qwen model in GitHub Copilot Chat, managed by a VS Code extension that controls one Modal deployment and provides its own diagnostic MCP validation path.
-Complete when the extension settings, model picker, workspace lifecycle, streamed request, MCP probe/tool round-trip, and explicit stop path are validated.
+The destination is one selectable Qwen model in GitHub Copilot Chat, managed by a VS Code extension that controls one Modal deployment and provides an MCP server for model delegation and lifecycle management (`delegate`, `up`, `down`).
+Complete when the extension settings, model picker, workspace lifecycle, streamed request, MCP tool suite (`delegate`/`up`/`down`), and explicit stop path are validated.
 -> lm/witness
 > Scope is one extension, one Qwen model, one Modal backend, and one Copilot Chat provider. Test doubles prove the interfaces; they are not product choices.
 > Human-owned specification remains design authority. This VINE owns execution order and evidence.
 @guidance text/markdown human-owned-spec/initial-spec.md
 ---
 [lm/witness] Validate the extension end to end (notstarted)
-Run the extension in an Extension Development Host against the deployed Modal app and use the extension-provided inference-validation MCP server.
-Accept: Qwen appears in the Copilot Chat model picker, a streamed text response completes, `inference_probe` completes through the deployed endpoint and its result returns to Qwen, workspace lifecycle behavior is observed, and Stop preserves the cache Volumes.
+Run the extension in an Extension Development Host against the deployed Modal app and use the extension-provided model delegation MCP server.
+Accept: Qwen appears in the Copilot Chat model picker, a streamed text response completes, `delegate` completes through the deployed endpoint and its result returns to Qwen, workspace lifecycle behavior is observed, and Stop preserves the cache Volumes.
 -> lm/provider
 -> lm/lifecycle
 -> lm/deployment
@@ -35,9 +35,9 @@ Accept: the artifact compiles and the selected 128K profile can be deployed for 
 -> lm/model
 -> lm/tests/modal-startup
 ---
-[lm/mcp] Pack the inference-validation MCP diagnostics (started)
-Bundle a stdio MCP server in the extension with `inference_status` and bounded streamed `inference_probe` tools. Resolve the current endpoint and Proxy Token only when VS Code starts the server.
-Accept: no `.vscode/mcp.json` is required, the server is dynamically discoverable, and a real Copilot tool call can invoke the probe against the deployed Chat Completions endpoint.
+[lm/mcp] Pack the model delegation MCP server (reviewing)
+Bundle a stdio MCP server in the extension with `delegate`, `up`, and `down` tools. Resolve configuration and Proxy Token at server start without blocking on GPU readiness; perform best-effort startup on delegate.
+Accept: no `.vscode/mcp.json` is required, the server is dynamically discoverable, connects immediately over stdio, and a real Copilot tool call can invoke `delegate` against the deployed Chat Completions endpoint.
 -> lm/tests/mcp
 ---
 [lm/model] Define the Qwen model and context profiles (reviewing)
@@ -71,8 +71,8 @@ Exercise the pure activation/deactivation policy functions and the controller's 
 Accept: workspace deploys/stops with the extension lifecycle; on-demand waits for the first request and does not auto-stop.
 ---
 [lm/tests/mcp] Test the packed MCP protocol path (reviewing)
-Spawn the bundled `dist/mcp.js` with a fixture endpoint and connect using a real MCP stdio client. List tools, call `inference_status`, and call `inference_probe` against a streamed fixture response.
-Accept: the shipped MCP artifact speaks MCP correctly, exposes exactly the two bounded diagnostic tools, and returns streamed inference text without touching Modal.
+Spawn the bundled `dist/mcp.js` with a fixture endpoint and connect using a real MCP stdio client. List tools, verify `delegate`, `up`, and `down` tool definitions, and exercise streamed task delegation against a fixture response.
+Accept: the shipped MCP artifact speaks MCP correctly, exposes exactly the three delegation and lifecycle tools, and returns streamed inference text without touching Modal.
 ---
 [lm/tests/scenarios] Test the real Extension Host and packaging paths (reviewing)
 Exercise the canonical `@vscode/test-cli` Extension Host path with a real workspace, real extension activation, Copilot model registration, Start command, dynamic MCP provider, packed MCP stdio client, and local HTTP fixture. Keep the Windows user-Python CLI resolution and UTF-8 subprocess fixture in the unit suite; use `npm run package` only for packaging.

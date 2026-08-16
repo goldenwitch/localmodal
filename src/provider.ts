@@ -66,15 +66,19 @@ export class LocalmodalLanguageModelProvider
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     token: vscode.CancellationToken,
   ): Promise<void> {
-    const endpoint = await this.controller.ensureReady(model.definition.id, model.profileId);
-    const proxyToken = await this.secrets.get("modalProxyToken");
-    if (!proxyToken) {
-      throw new Error("Configure the Modal Proxy Token before using localmodal.");
-    }
-
     const abortController = new AbortController();
     const cancellation = token.onCancellationRequested(() => abortController.abort());
     try {
+      const endpoint = await this.controller.ensureReady(
+        model.definition.id,
+        model.profileId,
+        abortController.signal,
+      );
+      const proxyToken = await this.secrets.get("modalProxyToken");
+      if (!proxyToken) {
+        throw new Error("Configure the Modal Proxy Token before using localmodal.");
+      }
+
       const response = await fetch(`${endpoint.baseUrl}/v1/chat/completions`, {
         method: "POST",
         headers: {

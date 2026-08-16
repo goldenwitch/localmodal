@@ -98,22 +98,25 @@ suite("localmodal Extension Host", () => {
       const tools = await client.listTools();
       assert.deepEqual(
         tools.tools.map((tool) => tool.name).sort(),
-        ["inference_probe", "inference_status"],
+        ["delegate", "down", "up"],
       );
 
-      const status = await client.callTool({ name: "inference_status", arguments: {} });
-      assert.match(JSON.stringify(status), /HTTP 200/);
+      const upResult = await client.callTool({ name: "up", arguments: {} });
+      assert.doesNotMatch(JSON.stringify(upResult), /isError/);
 
-      const probe = await client.callTool({
-        name: "inference_probe",
-        arguments: { prompt: "prove the Extension Host path" },
+      const delegateResult = await client.callTool({
+        name: "delegate",
+        arguments: { task: "prove the Extension Host path" },
       }, undefined, live ? { timeout: 180000, maxTotalTimeout: 180000 } : undefined);
-      assert.doesNotMatch(JSON.stringify(probe), /isError/);
+      assert.doesNotMatch(JSON.stringify(delegateResult), /isError/);
       if (live) {
-        assert.match(JSON.stringify(probe), /model=Qwen\/Qwen3\.8-27B/);
+        assert.match(JSON.stringify(delegateResult), /model=Qwen\/Qwen3\.8-27B/);
       } else {
-        assert.match(JSON.stringify(probe), /extension-host fixture response/);
+        assert.match(JSON.stringify(delegateResult), /extension-host fixture response/);
       }
+
+      const downResult = await client.callTool({ name: "down", arguments: {} });
+      assert.doesNotMatch(JSON.stringify(downResult), /isError/);
     } finally {
       await client.close();
     }

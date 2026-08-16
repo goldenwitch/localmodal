@@ -4,8 +4,8 @@
 
 Make one current Qwen model selectable and usable in GitHub Copilot Chat from
 VS Code. The extension is the control plane: it exposes configuration, model
-selection, Modal lifecycle commands, the Copilot language-model provider, and a
-diagnostic MCP server for validating the inference path.
+selection, Modal lifecycle commands, the Copilot language-model provider, and an
+MCP server for model delegation and lifecycle management (`delegate`, `up`, `down`).
 The Modal deployment remains a small backend artifact under [deployment/](../deployment/).
 
 This is a personal-use extension, not a general model marketplace, an engine
@@ -80,11 +80,17 @@ before it becomes a product option.
 - The provider registers the fixed Qwen model through
   `vscode.lm.registerLanguageModelChatProvider`; Copilot's picker is the sole
   model-selection UI.
-- The extension dynamically provides a stdio MCP server with bounded
-  `inference_status` and `inference_probe` tools. No workspace MCP file is
-  required.
-- When the MCP server starts, the extension resolves the current endpoint and
-  Proxy Token, then supplies it only to that short-lived process.
+- The extension dynamically provides a stdio MCP server with `delegate`, `up`,
+  and `down` tools. No workspace MCP file is required.
+- When the MCP server starts, the extension resolves configuration and Proxy
+  Token without blocking on GPU readiness; the MCP server process starts
+  immediately over stdio.
+- `delegate` accepts a task and optional context to execute inference on the
+  remote model; if the deployment is stopped or cold, it performs best-effort
+  startup (`up`) and emits progress before fulfilling the request.
+- `up` explicitly deploys and warms the endpoint, returning readiness timing.
+- `down` explicitly stops the active Modal deployment to halt compute billing
+  while preserving cache Volumes.
 - Copilot requests are translated to Qwen Chat Completions requests.
 - Text, streamed reasoning, images, tool definitions, tool results, and
   streamed tool calls are translated across the boundary.
@@ -116,9 +122,9 @@ The automated suite must keep these claims executable:
   decisions.
 8. The controller accepts fixture catalogs, fake backends, and memory stores
   through the same interfaces.
-9. The bundled MCP server passes a real stdio client test, lists both
-  diagnostic tools, and streams a probe through a fixture Chat Completions
-  endpoint.
+9. The bundled MCP server passes a real stdio client test, lists `delegate`,
+  `up`, and `down` tools, and exercises streamed task delegation against a
+  fixture endpoint.
 10. The canonical VS Code Extension Host suite opens a separate VS Code
   instance, activates the real extension, observes the Copilot model
   registration, executes the Start command, resolves the dynamic MCP
@@ -140,8 +146,8 @@ The direction is complete when all of these are validated:
 3. A streamed text request completes through Modal.
 4. A Copilot tool call round-trip completes through the same provider.
 5. The extension-provided MCP server is discoverable without `.vscode/mcp.json`;
-  `inference_probe` completes against the deployed endpoint and Qwen uses its
-  returned result.
+  `delegate` completes against the deployed endpoint and Qwen uses its returned
+  result.
 6. Start, status, and Stop work through the extension commands.
 7. The 128K profile is measured and is the normal operating profile; the 262K
   profile remains clearly experimental.

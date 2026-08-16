@@ -84,8 +84,13 @@ try {
 async function waitForReady(url, token, deployStart) {
   const deadline = deployStart + maxDeployToReadySeconds * 1000;
   while (performance.now() < deadline) {
+    let response;
     try {
-      const response = await fetchWithTimeout(`${url}/v1/models`, token);
+      response = await fetchWithTimeout(`${url}/v1/models`, token);
+    } catch {
+      // Allow transient connection errors (fetch failed, connection reset) and timeouts to retry until deadline
+    }
+    if (response) {
       if (response.ok) {
         return {
           readyAt: new Date().toISOString(),
@@ -97,10 +102,6 @@ async function waitForReady(url, token, deployStart) {
       }
       if (![502, 503, 504].includes(response.status)) {
         fail(`Modal readiness returned unexpected HTTP ${response.status}: ${await response.text()}`);
-      }
-    } catch (error) {
-      if (!(error instanceof Error && error.name === "AbortError")) {
-        throw error;
       }
     }
     await delay(5000);

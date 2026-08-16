@@ -20,7 +20,7 @@ test("only lifecycle and context profile are user-facing settings", () => {
   ]);
   assert.deepEqual(manifest.contributes.mcpServerDefinitionProviders, [{
     id: "localmodal.mcp",
-    label: "localmodal inference validation",
+    label: "localmodal",
   }]);
   assert.equal(
     manifest.contributes.commands.some((command) => command.command === "localmodal.setup"),

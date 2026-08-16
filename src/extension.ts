@@ -11,15 +11,18 @@ import {
   needsOnboarding,
   ONBOARDING_STATE_KEY,
   shouldDeployAfterOnboarding,
-  shouldStopAfterOnboarding,
 } from "./onboarding";
 import { DEPLOYMENT_DEFAULTS, USER_DEFAULTS } from "./product";
-import { shouldDeployOnActivation, type LifecyclePolicy } from "./lifecycle";
+import {
+  shouldDeployOnActivation,
+  shouldStopOnDeactivation,
+  type LifecyclePolicy,
+} from "./lifecycle";
 import { VscodeSecretStore, VscodeStateStore } from "./state/vscode";
 
 const catalog = new StaticModelCatalog([QWEN38_27B]);
 const ISSUE_URL = "https://github.com/goldenwitch/localmodal/issues/new?template=bug_report.yml";
-let stopWorkspaceApp: (() => Promise<void>) | undefined;
+let activeController: ModelController | undefined;
 
 export interface LocalmodalExtensionApi {
   getStatus(): Promise<LifecycleStatus>;
@@ -52,9 +55,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Localm
   let controller: ModelController;
   const markOnboarded = async (): Promise<void> => {
     await context.globalState.update(ONBOARDING_STATE_KEY, true);
-    if (shouldStopAfterOnboarding(readSettings().lifecycle, true)) {
-      stopWorkspaceApp = () => controller.stop();
-    }
   };
   controller = new ModelController(
     catalog,
@@ -63,6 +63,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Localm
     secrets,
     markOnboarded,
   );
+  activeController = controller;
   const provider = new LocalmodalLanguageModelProvider(
     catalog,
     controller,
@@ -71,9 +72,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<Localm
   );
   const mcpProvider = new LocalmodalMcpProvider(
     context.extensionPath,
-    controller,
     secrets,
     () => readSettings().contextProfile,
+    () => controller.currentEndpoint,
   );
 
   context.subscriptions.push(
@@ -119,7 +120,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<Localm
     vscode.commands.registerCommand("localmodal.showOutput", () => output.show(true)),
     vscode.commands.registerCommand("localmodal.selectContextProfile", async () => {
       const selected = await vscode.window.showQuickPick(
-        ["32k", "128k", "262k"].map((id) => ({ label: id, description: id === "128k" ? "Long-context default" : "" })),
+        [
+          { label: "32k", description: "Conservative fallback" },
+          { label: "128k", description: "Long-context default" },
+          { label: "262k", description: "Experimental native context ceiling" },
+        ],
         { placeHolder: "Select the Copilot context profile" },
       );
       if (selected) {
@@ -175,9 +180,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Localm
     void runCommand("Localmodal", async () => {
       await runWorkspaceDeployment(controller, backend, statusBar, settings.contextProfile, report);
     });
-    stopWorkspaceApp = shouldStopAfterOnboarding(settings.lifecycle, true)
-      ? () => controller.stop()
-      : undefined;
   }
 
   return {
@@ -193,10 +195,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<Localm
 }
 
 export async function deactivate(): Promise<void> {
-  if (stopWorkspaceApp) {
-    await stopWorkspaceApp();
-    stopWorkspaceApp = undefined;
+  const settings = readSettings();
+  if (activeController && shouldStopOnDeactivation(settings.lifecycle)) {
+    await activeController.stop();
   }
+  activeController = undefined;
 }
 
 function readSettings() {
@@ -264,19 +267,19 @@ async function runFirstRun(options: FirstRunOptions): Promise<void> {
 
       options.output.show(true);
 
-      progress.report({ message: "checking Modal CLI" });
-      options.report("onboarding: checking Modal CLI");
-      const cliStatus = await options.backend.status();
-      if (cliStatus.state === "error") {
-        throw new Error(cliStatus.detail ?? "Modal CLI setup is required before connecting Qwen.");
-      }
-
       progress.report({ message: "waiting for Proxy Token" });
       options.report("onboarding: resolving Proxy Token");
       const token = await options.secrets.get("modalProxyToken");
       if (!token) {
         options.report("onboarding: cancelled before deployment");
         return;
+      }
+
+      progress.report({ message: "checking Modal CLI" });
+      options.report("onboarding: checking Modal CLI");
+      const cliStatus = await options.backend.status();
+      if (cliStatus.state === "error") {
+        throw new Error(cliStatus.detail ?? "Modal CLI setup is required before connecting Qwen.");
       }
 
       const settings = readSettings();
@@ -288,9 +291,6 @@ async function runFirstRun(options: FirstRunOptions): Promise<void> {
         progress.report({ message: "connected; waiting for first Copilot request" });
       }
       await options.context.globalState.update(ONBOARDING_STATE_KEY, true);
-      if (shouldStopAfterOnboarding(settings.lifecycle, true)) {
-        stopWorkspaceApp = () => options.controller.stop();
-      }
       options.provider.refresh();
       await updateStatusBar(options.statusBar, options.backend);
       vscode.window.showInformationMessage(

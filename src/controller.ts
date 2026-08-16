@@ -18,6 +18,10 @@ export class ModelController {
     private readonly onReady?: () => PromiseLike<void> | void,
   ) {}
 
+  public get currentEndpoint(): Endpoint | undefined {
+    return this.state.get<Endpoint | undefined>(ENDPOINT_KEY, undefined);
+  }
+
   public async start(modelId: string, profileId: string): Promise<Endpoint> {
     const model = this.catalog.get(modelId);
     if (!model) {
@@ -48,7 +52,11 @@ export class ModelController {
     return this.start(modelId, profileId);
   }
 
-  public async ensureReady(modelId: string, profileId: string): Promise<Endpoint> {
+  public async ensureReady(
+    modelId: string,
+    profileId: string,
+    signal?: AbortSignal,
+  ): Promise<Endpoint> {
     const token = await this.secrets.get("modalProxyToken");
     if (!token) {
       throw new Error("A Modal Proxy Token is required to use localmodal.");
@@ -66,7 +74,7 @@ export class ModelController {
       endpoint = await this.start(modelId, profileId);
     }
 
-    await this.backend.ensureReady(endpoint, token);
+    await this.backend.ensureReady(endpoint, token, signal);
     await this.onReady?.();
     return endpoint;
   }
