@@ -10,6 +10,7 @@ import { ModelController } from "../controller";
 import type { ModelCatalog, ModelDefinition } from "../models/types";
 import { QWEN38_27B } from "../models/qwen";
 import { presentModels } from "../models/presentation";
+import { LocalmodalRuntime } from "../runtime";
 import type { SecretStore, StateStore } from "../state/types";
 
 class MemoryStateStore implements StateStore {
@@ -103,10 +104,9 @@ test("the controller accepts any model catalog implementation", async () => {
     new FixtureCatalog([fixture]),
     backend,
     new MemoryStateStore(),
-    secrets,
   );
 
-  await controller.ensureReady("fixture/model", "32k");
+  await controller.ensureReady("fixture/model", "32k", "fixture-token");
 
   assert.equal(backend.deployed?.model.id, "fixture/model");
   assert.equal(backend.ready, true);
@@ -120,10 +120,9 @@ test("the lifecycle boundary supports start, readiness, status, and stop", async
     { list: () => [QWEN38_27B], get: (id) => (id === QWEN38_27B.id ? QWEN38_27B : undefined) },
     backend,
     new MemoryStateStore(),
-    secrets,
   );
 
-  await controller.ensureReady(QWEN38_27B.id, "128k");
+  await controller.ensureReady(QWEN38_27B.id, "128k", "fixture-token");
   assert.equal(backend.deployed?.profile.maxModelLen, 131072);
   assert.equal((await controller.status()).state, "deployed");
 
@@ -131,33 +130,33 @@ test("the lifecycle boundary supports start, readiness, status, and stop", async
   assert.equal((await controller.status()).state, "stopped");
 });
 
-test("deployment does not read the wire token until readiness is requested", async () => {
+test("deployment does not read the Proxy Token until readiness is requested", async () => {
   const backend = new FakeLifecycleBackend();
   const secrets = new MemorySecretStore();
   const controller = new ModelController(
     { list: () => [QWEN38_27B], get: (id) => (id === QWEN38_27B.id ? QWEN38_27B : undefined) },
     backend,
     new MemoryStateStore(),
-    secrets,
   );
+  const runtime = new LocalmodalRuntime(controller, secrets);
 
-  await controller.ensureDeployed(QWEN38_27B.id, "128k");
+  await runtime.ensureDeployed(QWEN38_27B.id, "128k");
   assert.equal(secrets.getCalls, 0);
   assert.equal(backend.deployed?.profile.id, "128k");
 });
 
-test("a missing wire token fails before touching the backend", async () => {
+test("a missing Proxy Token fails before touching the backend", async () => {
   const backend = new FakeLifecycleBackend();
   const secrets = new MemorySecretStore();
   const controller = new ModelController(
     { list: () => [QWEN38_27B], get: (id) => (id === QWEN38_27B.id ? QWEN38_27B : undefined) },
     backend,
     new MemoryStateStore(),
-    secrets,
   );
+  const runtime = new LocalmodalRuntime(controller, secrets);
 
   await assert.rejects(
-    controller.ensureReady(QWEN38_27B.id, "128k"),
+    runtime.ensureReady(QWEN38_27B.id, "128k"),
     /Modal Proxy Token is required/,
   );
   assert.equal(secrets.getCalls, 1);
@@ -165,17 +164,15 @@ test("a missing wire token fails before touching the backend", async () => {
   assert.equal(backend.deployed, undefined);
 });
 
-test("the production catalog presents one Qwen model per selected profile", () => {
+test("the production catalog presents one measured Qwen model per selected profile", () => {
   const catalog = new FixtureCatalog([QWEN38_27B]);
 
-  const measured = presentModels(catalog, "32k");
-  assert.equal(measured.length, 1);
-  assert.equal(measured[0].definition.id, QWEN38_27B.id);
-  assert.equal(measured[0].version, "27B-32k");
-  assert.equal(measured[0].detail, "Modal / 32k");
-  assert.equal(measured[0].maxInputTokens, 28672);
-
-  const unmeasured = presentModels(catalog, "128k");
-  assert.equal(unmeasured.length, 1);
-  assert.equal(unmeasured[0].detail, "Modal / 128k / unmeasured");
+  for (const profile of ["32k", "128k", "262k"] as const) {
+    const presented = presentModels(catalog, profile);
+    assert.equal(presented.length, 1);
+    assert.equal(presented[0].definition.id, QWEN38_27B.id);
+    assert.equal(presented[0].version, `27B-${profile}`);
+    assert.equal(presented[0].detail, `Modal / ${profile}`);
+  }
+  assert.equal(presentModels(catalog, "32k")[0].maxInputTokens, 28672);
 });

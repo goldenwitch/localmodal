@@ -27,8 +27,13 @@ export interface LifecycleStatus {
 }
 
 export interface LifecycleBackend {
-  deploy(spec: DeploymentSpec): Promise<Endpoint>;
+  deploy(spec: DeploymentSpec, signal?: AbortSignal, onProgress?: (message: string) => void): Promise<Endpoint>;
   status(): Promise<LifecycleStatus>;
-  ensureReady(endpoint: Endpoint, token: string, signal?: AbortSignal): Promise<void>;
-  stop(): Promise<void>;
+  ensureReady(
+    endpoint: Endpoint,
+    token: string,
+    signal?: AbortSignal,
+    onProgress?: (message: string) => void,
+  ): Promise<void>;
+  stop(signal?: AbortSignal): Promise<void>;
 }

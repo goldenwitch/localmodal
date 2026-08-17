@@ -9,7 +9,3 @@ export function needsOnboarding(completed: boolean): boolean {
 export function shouldDeployAfterOnboarding(policy: LifecyclePolicy): boolean {
   return policy === "workspace";
 }
-
-export function shouldStopAfterOnboarding(policy: LifecyclePolicy, completed: boolean): boolean {
-  return completed && policy === "workspace";
-}

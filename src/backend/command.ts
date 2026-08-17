@@ -69,8 +69,10 @@ function listDirectories(root: string): string[] {
 export function modalProcessEnvironment(
   environment: NodeJS.ProcessEnv = process.env,
 ): NodeJS.ProcessEnv {
+  const sanitized = { ...environment };
+  delete sanitized.MODAL_PROXY_TOKEN;
   return {
-    ...environment,
+    ...sanitized,
     PYTHONIOENCODING: "utf-8",
     PYTHONUTF8: "1",
   };

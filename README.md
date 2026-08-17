@@ -4,7 +4,9 @@ Use one Modal-hosted Qwen model in GitHub Copilot Chat from VS Code.
 
 The extension owns configuration, encrypted credential storage, Modal
 deployment lifecycle, model selection, the streamed Copilot Chat provider, and
-a diagnostic MCP server for validating the inference path.
+an MCP server for model delegation and lifecycle management (`delegate`, `up`, `down`).
+One extension-owned runtime implements deployment, credentials, inference, and
+stream parsing; Copilot and MCP are adapters over that same runtime.
 The current production target is
 [Qwen/Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B) at Hub revision
 `1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0`, served by vLLM on one Modal
@@ -107,11 +109,11 @@ npm run test:integration
 This downloads/launches a separate VS Code instance, opens this workspace,
 activates the real extension, verifies the Copilot model registration, invokes
 the real Start command, resolves the dynamic MCP provider, and calls the
-packed MCP tools against a local HTTP fixture. It does not start Modal or
-consume GPU time.
+extension-hosted MCP tools against a local HTTP fixture. It does not start
+Modal or consume GPU time.
 
 The same suite is available from the `Run localmodal Extension Tests` launch
-configuration. For the real cloud witness, run:
+configuration. For the real cloud validation, run:
 
 ```powershell
 $env:MODAL_PROXY_TOKEN = "wk-<id>.ws-<secret>"
@@ -119,8 +121,8 @@ $env:LOCALMODAL_TEST_APP_NAME = "localmodal-qwen-live"
 npm run test:integration:live
 ```
 
-The live label deploys the real Modal app, resolves the real endpoint through
-the extension, and invokes the packed MCP tools against it. It is opt-in and
+The live test label deploys the real Modal app, resolves the real endpoint through
+the extension, and invokes the extension-hosted MCP tools against it. It is opt-in and
 incurs GPU cost; the scheduled/manual CI workflow runs the same label with
 repository secrets and stops the unique test app afterward.
 
@@ -166,8 +168,8 @@ credentials supplied as repository secrets.
 
 1. Open any VS Code workspace folder.
 2. On first activation, choose `Connect Qwen` in the localmodal notification.
-3. The extension checks the Modal CLI, opens the Proxy Token settings page, and
-  prompts for the `wk-...` ID and masked `ws-...` secret.
+3. The extension opens the Proxy Token settings page, prompts for the `wk-...`
+  ID and masked `ws-...` secret, and verifies the Modal CLI.
 4. In `workspace` mode, the extension deploys the app after setup. In
   `on-demand` mode, deployment waits until the first model request.
 5. Open GitHub Copilot Chat and choose `Qwen3.8-27B (Modal)` in the model
@@ -187,29 +189,30 @@ shown in the `localmodal` Output channel. Use `Localmodal: Show Output` to
 reopen it. A first image build can take several minutes; the output channel is
 the authoritative indication that the subprocess is still producing progress.
 
-## Validate The Inference Path
+## Model Delegation And MCP Control
 
-The extension dynamically provides an MCP server named `localmodal inference
-validation`. No `.vscode/mcp.json` file or separate MCP installation is
-needed. When Copilot starts the server, localmodal supplies the current Modal
-endpoint and the SecretStorage token to the short-lived stdio process.
+The extension dynamically provides an MCP server named `localmodal`. No
+`.vscode/mcp.json` file or separate MCP installation is needed. When VS Code or
+an agent connects, it uses an authenticated loopback Streamable HTTP endpoint
+that is already hosted by the extension and does not block on GPU provisioning.
+The loopback bearer is random per activation and is not the Modal Proxy Token.
 
-The server exposes two diagnostic tools:
+The server exposes three tools:
 
-- `inference_status`: checks `/v1/models` and reports the endpoint response.
-- `inference_probe`: sends one bounded streamed Chat Completions request and
-  returns the streamed text.
+- `delegate`: passes a task and optional context to the self-hosted model. If
+  the deployment is stopped or cold, it performs best-effort deployment and
+  warmup (`up`), emitting progress before returning the model's response.
+- `up`: explicitly starts and warms the Modal deployment, returning endpoint
+  readiness and timing metadata.
+- `down`: explicitly stops the active Modal deployment to halt compute billing
+  while preserving cache Volumes.
 
-With `Qwen3.8-27B (Modal)` selected, ask Copilot Chat:
+With Copilot Chat or any agent framework supporting MCP tools, agents can
+delegate sub-tasks to Qwen:
 
 ```text
-Use the localmodal inference probe with the prompt "Reply with exactly one sentence proving the inference path is live." Then report the returned model and response.
+Use the localmodal delegate tool with task "Summarize the architectural seams in this repository" and provide the file contents as context.
 ```
-
-That exercises the complete loop: Qwen emits a tool call, VS Code invokes the
-extension-provided MCP server, the MCP server calls the Modal endpoint, and the
-tool result returns to Qwen for the final response. The MCP tools are
-diagnostic witnesses, not part of the model's production tool catalog.
 
 ## Lifecycle And Cost
 
@@ -217,7 +220,7 @@ The `localmodal.lifecycle` setting has two modes.
 
 | Mode | Behavior |
 | --- | --- |
-| `workspace` | Deploy the Modal app when the extension activates; the first Copilot request warms the GPU; extension deactivation attempts to stop the app. |
+| `workspace` | Deploy the Modal app when the extension activates; the first Copilot request warms the GPU; extension deactivation attempts to stop a deployment managed by that activation. |
 | `on-demand` | Wait to deploy and warm the app until the first model request; stop explicitly with the Stop command. |
 
 Deploying the app is not the same as running the GPU. Modal scales the web
@@ -228,9 +231,9 @@ The context profiles are:
 
 | Profile | Meaning |
 | --- | --- |
-| `32k` | Measured first-load fallback. Use this for the first diagnostic request if the long-context profile has not been witnessed on your account. |
-| `128k` | Extension default and intended repository-work profile; still marked unmeasured until a real Modal load/request witness exists. |
-| `262k` | Qwen's native context ceiling; experimental. |
+| `32k` | Measured cached profile and conservative fallback. |
+| `128k` | Measured cached profile and extension default for repository work. |
+| `262k` | Measured cached profile at Qwen's native context ceiling; experimental. |
 
 The selected profile is advertised to Copilot and passed to the Modal
 deployment. It is not silently upgraded.
@@ -246,6 +249,7 @@ Commands are available from the Command Palette:
 - `Localmodal: Show Status`
 - `Localmodal: Show Output`
 - `Localmodal: Select Context Profile`
+- `Localmodal: Report a Problem`
 
 The main settings are:
 
@@ -268,7 +272,19 @@ inline suggestions, semantic search, or other Copilot services outside chat.
 The extension core has explicit `ModelCatalog`, `LifecycleBackend`,
 `StateStore`, and `SecretStore` interfaces. Production uses Qwen, Modal, and
 VS Code; contract tests use fixture, fake, and memory implementations to prove
-those boundaries without adding unused production paths.
+those boundaries without adding unused production paths. `LocalmodalRuntime`
+is the single operational owner above those interfaces; the VS Code provider,
+commands, and MCP tools do not duplicate its controller, credential state,
+request builder, or stream parser.
 
 The design authority is [human-owned-spec/initial-spec.md](human-owned-spec/initial-spec.md).
 The execution graph is [localmodal.vine](localmodal.vine).
+
+## Report A Problem
+
+If setup, deployment, Copilot responses, or the diagnostic tools fail, use
+`Localmodal: Report a Problem` or open the repository's
+[GitHub issue form](https://github.com/goldenwitch/localmodal/issues/new?template=bug_report.yml).
+Include the lifecycle mode, context profile, the step that failed, and the
+relevant `localmodal` Output channel messages. Never include a Modal Proxy
+Token or other credentials in an issue.

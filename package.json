@@ -9,6 +9,9 @@
     "type": "git",
     "url": "https://github.com/goldenwitch/localmodal.git"
   },
+  "bugs": {
+    "url": "https://github.com/goldenwitch/localmodal/issues"
+  },
   "engines": {
     "vscode": "^1.133.0"
   },
@@ -48,6 +51,10 @@
       {
         "command": "localmodal.setup",
         "title": "Localmodal: Connect Qwen"
+      },
+      {
+        "command": "localmodal.reportIssue",
+        "title": "Localmodal: Report a Problem"
       }
     ],
     "configuration": {
@@ -75,8 +82,8 @@
           ],
           "enumDescriptions": [
             "Conservative first-load profile.",
-            "Long-context profile for normal repository work; requires measurement on the selected GPU.",
-            "Qwen native context ceiling; experimental until measured."
+            "Measured cached profile for normal repository work.",
+            "Measured cached profile at Qwen's native context ceiling; experimental."
           ],
           "default": "128k",
           "description": "The context profile advertised to Copilot Chat and sent to the deployment."
@@ -92,20 +99,21 @@
     "mcpServerDefinitionProviders": [
       {
         "id": "localmodal.mcp",
-        "label": "localmodal inference validation"
+        "label": "localmodal"
       }
     ]
   },
   "scripts": {
     "build": "node esbuild.js",
-    "compile": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p .",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "compile": "npm run clean && tsc -p .",
     "test": "npm run compile && npm run build && node --test dist/test/**/*.test.js && npm run test:credentials",
     "credentials": "node scripts/local-credentials.mjs",
     "test:credentials": "node --test scripts/local-credentials.test.mjs",
     "test:integration": "npm run compile && npm run build && vscode-test --label extension-host",
     "test:integration:live": "npm run compile && npm run build && vscode-test --label extension-live",
     "test:all": "npm test && npm run test:integration",
-    "package": "npm run build && npm exec --yes @vscode/vsce -- package"
+    "package": "npm run compile && npm run clean && npm run build && npm exec --yes @vscode/vsce -- package"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

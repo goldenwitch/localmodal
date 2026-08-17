@@ -1,21 +1,15 @@
 const esbuild = require("esbuild");
+const fs = require("node:fs");
 
-Promise.all([
-  esbuild.build({
-    entryPoints: ["src/extension.ts"],
-    bundle: true,
-    external: ["vscode"],
-    format: "cjs",
-    platform: "node",
-    sourcemap: true,
-    outfile: "dist/extension.js",
-  }),
-  esbuild.build({
-    entryPoints: ["src/mcp/server.ts"],
-    bundle: true,
-    format: "cjs",
-    platform: "node",
-    sourcemap: true,
-    outfile: "dist/mcp.js",
-  }),
-]).catch(() => process.exit(1));
+fs.rmSync("dist/mcp.js", { force: true });
+fs.rmSync("dist/mcp.js.map", { force: true });
+
+esbuild.build({
+  entryPoints: ["src/extension.ts"],
+  bundle: true,
+  external: ["vscode"],
+  format: "cjs",
+  platform: "node",
+  sourcemap: true,
+  outfile: "dist/extension.js",
+}).catch(() => process.exit(1));
