@@ -1,20 +1,11 @@
 import * as vscode from "vscode";
-import type { Endpoint } from "./backend/types";
-import { ModelController } from "./controller";
 import type { ModelCatalog, ModelDefinition } from "./models/types";
 import { presentModels } from "./models/presentation";
-import type { SecretStore } from "./state/types";
+import { type ChatMessage, LocalmodalRuntime } from "./runtime";
 
 interface ProviderModel extends vscode.LanguageModelChatInformation {
   readonly definition: ModelDefinition;
   readonly profileId: string;
-}
-
-interface OpenAIMessage {
-  role: "user" | "assistant" | "tool";
-  content?: unknown;
-  tool_calls?: unknown[];
-  tool_call_id?: string;
 }
 
 export class LocalmodalLanguageModelProvider
@@ -24,8 +15,7 @@ export class LocalmodalLanguageModelProvider
 
   public constructor(
     private readonly catalog: ModelCatalog,
-    private readonly controller: ModelController,
-    private readonly secrets: SecretStore,
+    private readonly runtime: LocalmodalRuntime,
     private readonly profileId: () => string,
   ) {}
 
@@ -69,60 +59,46 @@ export class LocalmodalLanguageModelProvider
     const abortController = new AbortController();
     const cancellation = token.onCancellationRequested(() => abortController.abort());
     try {
-      const endpoint = await this.controller.ensureReady(
+      const toolCalls = new Map<number, { id: string; name: string; arguments: string }>();
+      await this.runtime.streamChat(
         model.definition.id,
         model.profileId,
-        abortController.signal,
-      );
-      const proxyToken = await this.secrets.get("modalProxyToken");
-      if (!proxyToken) {
-        throw new Error("Configure the Modal Proxy Token before using localmodal.");
-      }
-
-      const response = await fetch(`${endpoint.baseUrl}/v1/chat/completions`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${proxyToken}`,
-          Accept: "text/event-stream",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: model.definition.id,
+        {
           messages: toOpenAIMessages(messages),
           tools: options.tools?.map((tool) => ({
             type: "function",
             function: {
               name: tool.name,
               description: tool.description,
-              parameters: tool.inputSchema,
+              parameters: tool.inputSchema ?? {},
             },
           })),
-          tool_choice: options.tools?.length
+          toolChoice: options.tools?.length
             ? options.toolMode === vscode.LanguageModelChatToolMode.Required
               ? "required"
               : "auto"
             : undefined,
-          stream: true,
-          stream_options: { include_usage: true },
-          ...(options.modelOptions ?? {}),
-          max_tokens: model.maxOutputTokens,
-          extra_body: {
-            chat_template_kwargs: {
-              enable_thinking: true,
-              preserve_thinking: true,
-            },
-          },
-        }),
-        signal: abortController.signal,
-      });
-      if (!response.ok) {
-        throw new Error(`Qwen endpoint returned HTTP ${response.status}: ${await response.text()}`);
+          modelOptions: options.modelOptions,
+          maxTokens: model.maxOutputTokens,
+        },
+        (delta) => {
+          if (delta.text) {
+            progress.report(new vscode.LanguageModelTextPart(delta.text));
+          }
+          for (const call of delta.toolCalls) {
+            const current = toolCalls.get(call.index) ?? { id: "", name: "", arguments: "" };
+            current.id += call.id;
+            current.name += call.name;
+            current.arguments += call.arguments;
+            toolCalls.set(call.index, current);
+          }
+        },
+        abortController.signal,
+      );
+      for (const call of toolCalls.values()) {
+        const input = JSON.parse(call.arguments || "{}");
+        progress.report(new vscode.LanguageModelToolCallPart(call.id, call.name, input));
       }
-      if (!response.body) {
-        throw new Error("Qwen endpoint returned no streaming body.");
-      }
-
-      await consumeSse(response.body, progress);
     } finally {
       cancellation.dispose();
     }
@@ -140,8 +116,8 @@ export class LocalmodalLanguageModelProvider
 
 function toOpenAIMessages(
   messages: readonly vscode.LanguageModelChatRequestMessage[],
-): OpenAIMessage[] {
-  const output: OpenAIMessage[] = [];
+): ChatMessage[] {
+  const output: ChatMessage[] = [];
   for (const message of messages) {
     const text = textToString(message.content);
     const images = message.content
@@ -195,69 +171,4 @@ function textToString(parts: readonly unknown[]): string {
       return "";
     })
     .join("");
-}
-
-async function consumeSse(
-  body: ReadableStream<Uint8Array>,
-  progress: vscode.Progress<vscode.LanguageModelResponsePart>,
-): Promise<void> {
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  const toolCalls = new Map<number, { id: string; name: string; arguments: string }>();
-
-  while (true) {
-    const { done, value } = await reader.read();
-    buffer += decoder.decode(value, { stream: !done });
-    const events = buffer.split(/\r?\n\r?\n/);
-    buffer = events.pop() ?? "";
-    for (const event of events) {
-      const data = event
-        .split(/\r?\n/)
-        .filter((line) => line.startsWith("data: "))
-        .map((line) => line.slice(6))
-        .join("\n");
-      if (!data || data === "[DONE]") {
-        continue;
-      }
-      const payload = JSON.parse(data) as {
-        choices?: Array<{
-          delta?: {
-            content?: string;
-            reasoning?: string;
-            reasoning_content?: string;
-            tool_calls?: Array<{
-              index?: number;
-              id?: string;
-              function?: { name?: string; arguments?: string };
-            }>;
-          };
-        }>;
-      };
-      const delta = payload.choices?.[0]?.delta;
-      if (!delta) {
-        continue;
-      }
-      const text = delta.content ?? delta.reasoning ?? delta.reasoning_content;
-      if (text) {
-        progress.report(new vscode.LanguageModelTextPart(text));
-      }
-      for (const call of delta.tool_calls ?? []) {
-        const index = call.index ?? 0;
-        const current = toolCalls.get(index) ?? { id: "", name: "", arguments: "" };
-        current.id += call.id ?? "";
-        current.name += call.function?.name ?? "";
-        current.arguments += call.function?.arguments ?? "";
-        toolCalls.set(index, current);
-      }
-    }
-    if (done) {
-      break;
-    }
-  }
-
-  for (const call of toolCalls.values()) {
-    const input = JSON.parse(call.arguments || "{}");
-    progress.report(new vscode.LanguageModelToolCallPart(call.id, call.name, input));
-  }
 }

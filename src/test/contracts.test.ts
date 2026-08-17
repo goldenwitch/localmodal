@@ -10,6 +10,7 @@ import { ModelController } from "../controller";
 import type { ModelCatalog, ModelDefinition } from "../models/types";
 import { QWEN38_27B } from "../models/qwen";
 import { presentModels } from "../models/presentation";
+import { LocalmodalRuntime } from "../runtime";
 import type { SecretStore, StateStore } from "../state/types";
 
 class MemoryStateStore implements StateStore {
@@ -103,10 +104,9 @@ test("the controller accepts any model catalog implementation", async () => {
     new FixtureCatalog([fixture]),
     backend,
     new MemoryStateStore(),
-    secrets,
   );
 
-  await controller.ensureReady("fixture/model", "32k");
+  await controller.ensureReady("fixture/model", "32k", "fixture-token");
 
   assert.equal(backend.deployed?.model.id, "fixture/model");
   assert.equal(backend.ready, true);
@@ -120,10 +120,9 @@ test("the lifecycle boundary supports start, readiness, status, and stop", async
     { list: () => [QWEN38_27B], get: (id) => (id === QWEN38_27B.id ? QWEN38_27B : undefined) },
     backend,
     new MemoryStateStore(),
-    secrets,
   );
 
-  await controller.ensureReady(QWEN38_27B.id, "128k");
+  await controller.ensureReady(QWEN38_27B.id, "128k", "fixture-token");
   assert.equal(backend.deployed?.profile.maxModelLen, 131072);
   assert.equal((await controller.status()).state, "deployed");
 
@@ -138,10 +137,10 @@ test("deployment does not read the Proxy Token until readiness is requested", as
     { list: () => [QWEN38_27B], get: (id) => (id === QWEN38_27B.id ? QWEN38_27B : undefined) },
     backend,
     new MemoryStateStore(),
-    secrets,
   );
+  const runtime = new LocalmodalRuntime(controller, secrets);
 
-  await controller.ensureDeployed(QWEN38_27B.id, "128k");
+  await runtime.ensureDeployed(QWEN38_27B.id, "128k");
   assert.equal(secrets.getCalls, 0);
   assert.equal(backend.deployed?.profile.id, "128k");
 });
@@ -153,11 +152,11 @@ test("a missing Proxy Token fails before touching the backend", async () => {
     { list: () => [QWEN38_27B], get: (id) => (id === QWEN38_27B.id ? QWEN38_27B : undefined) },
     backend,
     new MemoryStateStore(),
-    secrets,
   );
+  const runtime = new LocalmodalRuntime(controller, secrets);
 
   await assert.rejects(
-    controller.ensureReady(QWEN38_27B.id, "128k"),
+    runtime.ensureReady(QWEN38_27B.id, "128k"),
     /Modal Proxy Token is required/,
   );
   assert.equal(secrets.getCalls, 1);

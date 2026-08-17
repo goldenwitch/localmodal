@@ -5,7 +5,7 @@ import type {
   LifecycleStatus,
 } from "./backend/types";
 import type { ModelCatalog } from "./models/types";
-import type { SecretStore, StateStore } from "./state/types";
+import type { StateStore } from "./state/types";
 
 const ENDPOINT_KEY = "localmodal.endpoint";
 
@@ -14,7 +14,6 @@ export class ModelController {
     private readonly catalog: ModelCatalog,
     private readonly backend: LifecycleBackend,
     private readonly state: StateStore,
-    private readonly secrets: SecretStore,
     private readonly onReady?: () => PromiseLike<void> | void,
   ) {}
 
@@ -22,7 +21,12 @@ export class ModelController {
     return this.state.get<Endpoint | undefined>(ENDPOINT_KEY, undefined);
   }
 
-  public async start(modelId: string, profileId: string): Promise<Endpoint> {
+  public async start(
+    modelId: string,
+    profileId: string,
+    signal?: AbortSignal,
+    onProgress?: (message: string) => void,
+  ): Promise<Endpoint> {
     const model = this.catalog.get(modelId);
     if (!model) {
       throw new Error(`Unknown localmodal model: ${modelId}`);
@@ -33,12 +37,18 @@ export class ModelController {
     }
 
     const spec: DeploymentSpec = { model, profile };
-    const endpoint = await this.backend.deploy(spec);
+    const endpoint = await this.backend.deploy(spec, signal, onProgress);
     await this.state.update(ENDPOINT_KEY, endpoint);
     return endpoint;
   }
 
-  public async ensureDeployed(modelId: string, profileId: string): Promise<Endpoint> {
+  public async ensureDeployed(
+    modelId: string,
+    profileId: string,
+    signal?: AbortSignal,
+    onProgress?: (message: string) => void,
+  ): Promise<Endpoint> {
+    signal?.throwIfAborted();
     const saved = this.state.get<Endpoint | undefined>(ENDPOINT_KEY, undefined);
     const status = await this.backend.status();
     if (
@@ -49,19 +59,17 @@ export class ModelController {
     ) {
       return saved;
     }
-    return this.start(modelId, profileId);
+    return this.start(modelId, profileId, signal, onProgress);
   }
 
   public async ensureReady(
     modelId: string,
     profileId: string,
+    token: string,
     signal?: AbortSignal,
+    onProgress?: (message: string) => void,
   ): Promise<Endpoint> {
-    const token = await this.secrets.get("modalProxyToken");
-    if (!token) {
-      throw new Error("A Modal Proxy Token is required to use localmodal.");
-    }
-
+    signal?.throwIfAborted();
     let endpoint = this.state.get<Endpoint | undefined>(ENDPOINT_KEY, undefined);
     const status = await this.backend.status();
     if (
@@ -71,16 +79,16 @@ export class ModelController {
       status.state === "stopped" ||
       status.state === "error"
     ) {
-      endpoint = await this.start(modelId, profileId);
+      endpoint = await this.start(modelId, profileId, signal, onProgress);
     }
 
-    await this.backend.ensureReady(endpoint, token, signal);
+    await this.backend.ensureReady(endpoint, token, signal, onProgress);
     await this.onReady?.();
     return endpoint;
   }
 
-  public async stop(): Promise<void> {
-    await this.backend.stop();
+  public async stop(signal?: AbortSignal): Promise<void> {
+    await this.backend.stop(signal);
     await this.state.update(ENDPOINT_KEY, undefined);
   }
 

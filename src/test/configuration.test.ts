@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
+import { modalProcessEnvironment } from "../backend/command";
 import { shouldDeployOnActivation, shouldStopOnDeactivation } from "../lifecycle";
-import { needsOnboarding, shouldDeployAfterOnboarding, shouldStopAfterOnboarding } from "../onboarding";
+import { needsOnboarding, shouldDeployAfterOnboarding } from "../onboarding";
 import { DEPLOYMENT_DEFAULTS, USER_DEFAULTS } from "../product";
 
 test("only lifecycle and context profile are user-facing settings", () => {
@@ -47,9 +48,10 @@ test("deployment choices are fixed product defaults", () => {
 
 test("lifecycle policy is the only activation policy choice", () => {
   assert.equal(shouldDeployOnActivation("workspace"), true);
-  assert.equal(shouldStopOnDeactivation("workspace"), true);
+  assert.equal(shouldStopOnDeactivation("workspace", true), true);
+  assert.equal(shouldStopOnDeactivation("workspace", false), false);
   assert.equal(shouldDeployOnActivation("on-demand"), false);
-  assert.equal(shouldStopOnDeactivation("on-demand"), false);
+  assert.equal(shouldStopOnDeactivation("on-demand", true), false);
 });
 
 test("first-run setup gates deployment and follows the selected lifecycle policy", () => {
@@ -57,7 +59,16 @@ test("first-run setup gates deployment and follows the selected lifecycle policy
   assert.equal(needsOnboarding(true), false);
   assert.equal(shouldDeployAfterOnboarding("workspace"), true);
   assert.equal(shouldDeployAfterOnboarding("on-demand"), false);
-  assert.equal(shouldStopAfterOnboarding("workspace", true), true);
-  assert.equal(shouldStopAfterOnboarding("workspace", false), false);
-  assert.equal(shouldStopAfterOnboarding("on-demand", true), false);
+});
+
+test("Modal child processes exclude the Proxy Token", () => {
+  const environment = modalProcessEnvironment({
+    MODAL_PROXY_TOKEN: "wk-secret.ws-secret",
+    PATH: "fixture-path",
+  });
+
+  assert.equal(environment.MODAL_PROXY_TOKEN, undefined);
+  assert.equal(environment.PATH, "fixture-path");
+  assert.equal(environment.PYTHONIOENCODING, "utf-8");
+  assert.equal(environment.PYTHONUTF8, "1");
 });

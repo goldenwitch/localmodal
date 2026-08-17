@@ -105,14 +105,15 @@
   },
   "scripts": {
     "build": "node esbuild.js",
-    "compile": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p .",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "compile": "npm run clean && tsc -p .",
     "test": "npm run compile && npm run build && node --test dist/test/**/*.test.js && npm run test:credentials",
     "credentials": "node scripts/local-credentials.mjs",
     "test:credentials": "node --test scripts/local-credentials.test.mjs",
     "test:integration": "npm run compile && npm run build && vscode-test --label extension-host",
     "test:integration:live": "npm run compile && npm run build && vscode-test --label extension-live",
     "test:all": "npm test && npm run test:integration",
-    "package": "npm run build && npm exec --yes @vscode/vsce -- package"
+    "package": "npm run compile && npm run clean && npm run build && npm exec --yes @vscode/vsce -- package"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

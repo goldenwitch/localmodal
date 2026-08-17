@@ -6,6 +6,7 @@ import { ModelController } from "./controller";
 import { StaticModelCatalog } from "./models/types";
 import { QWEN38_27B } from "./models/qwen";
 import { LocalmodalLanguageModelProvider } from "./provider";
+import { LocalmodalMcpHost } from "./mcp/host";
 import { LocalmodalMcpProvider } from "./mcp/provider";
 import {
   needsOnboarding,
@@ -18,15 +19,18 @@ import {
   shouldStopOnDeactivation,
   type LifecyclePolicy,
 } from "./lifecycle";
+import { LocalmodalRuntime } from "./runtime";
 import { VscodeSecretStore, VscodeStateStore } from "./state/vscode";
 
 const catalog = new StaticModelCatalog([QWEN38_27B]);
 const ISSUE_URL = "https://github.com/goldenwitch/localmodal/issues/new?template=bug_report.yml";
-let activeController: ModelController | undefined;
+let activeRuntime: LocalmodalRuntime | undefined;
+let activeMcpHost: LocalmodalMcpHost | undefined;
+let activeDeploymentManaged = false;
 
 export interface LocalmodalExtensionApi {
   getStatus(): Promise<LifecycleStatus>;
-  resolveInferenceMcpServer(): Promise<vscode.McpStdioServerDefinition>;
+  resolveInferenceMcpServer(): Promise<vscode.McpHttpServerDefinition>;
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<LocalmodalExtensionApi> {
@@ -60,21 +64,33 @@ export async function activate(context: vscode.ExtensionContext): Promise<Localm
     catalog,
     backend,
     state,
-    secrets,
     markOnboarded,
   );
-  activeController = controller;
-  const provider = new LocalmodalLanguageModelProvider(
-    catalog,
+  activeDeploymentManaged = false;
+  const runtime = new LocalmodalRuntime(
     controller,
     secrets,
+    (active) => {
+      activeDeploymentManaged = active;
+    },
+    () => secrets.configureProxyToken(),
+  );
+  activeRuntime = runtime;
+  const provider = new LocalmodalLanguageModelProvider(
+    catalog,
+    runtime,
     () => readSettings().contextProfile,
   );
-  const mcpProvider = new LocalmodalMcpProvider(
-    context.extensionPath,
-    secrets,
+  const mcpHost = await LocalmodalMcpHost.start(
+    runtime,
+    QWEN38_27B.id,
     () => readSettings().contextProfile,
-    () => controller.currentEndpoint,
+    report,
+  );
+  activeMcpHost = mcpHost;
+  const mcpProvider = new LocalmodalMcpProvider(
+    vscode.Uri.parse(mcpHost.url.toString()),
+    mcpHost.authorizationHeader,
   );
 
   context.subscriptions.push(
@@ -83,7 +99,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Localm
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration("localmodal")) {
         provider.refresh();
-        updateStatusBar(statusBar, backend);
+        updateStatusBar(statusBar, runtime);
       }
     }),
   );
@@ -100,21 +116,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<Localm
     vscode.commands.registerCommand("localmodal.start", async () => {
       await runCommand("Localmodal", async () => {
         const config = readSettings();
-        await controller.ensureReady(QWEN38_27B.id, config.contextProfile);
-        await updateStatusBar(statusBar, backend);
+        await runtime.ensureReady(QWEN38_27B.id, config.contextProfile);
+        await updateStatusBar(statusBar, runtime);
         vscode.window.showInformationMessage("Localmodal Qwen is ready for Copilot Chat.");
       });
     }),
     vscode.commands.registerCommand("localmodal.stop", async () => {
       await runCommand("Localmodal", async () => {
-        await controller.stop();
-        await updateStatusBar(statusBar, backend);
+        await runtime.stop();
+        await updateStatusBar(statusBar, runtime);
         vscode.window.showInformationMessage("Localmodal stopped. Model caches were preserved.");
       });
     }),
     vscode.commands.registerCommand("localmodal.status", async () => {
-      const status = await backend.status();
-      await updateStatusBar(statusBar, backend);
+      const status = await runtime.status();
+      await updateStatusBar(statusBar, runtime);
       vscode.window.showInformationMessage(`Localmodal: ${status.state}${status.detail ? ` (${status.detail})` : ""}`);
     }),
     vscode.commands.registerCommand("localmodal.showOutput", () => output.show(true)),
@@ -137,7 +153,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Localm
       }
     }),
     vscode.commands.registerCommand("localmodal.configureToken", async () => {
-      const configured = await secrets.configureProxyToken();
+      const configured = await runtime.configureProxyToken();
       if (configured) {
         vscode.window.showInformationMessage("Localmodal Proxy Token stored.");
       }
@@ -145,9 +161,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Localm
     vscode.commands.registerCommand("localmodal.setup", async () => {
       await runFirstRun({
         context,
-        backend,
-        controller,
-        secrets,
+        runtime,
         provider,
         statusBar,
         output,
@@ -166,9 +180,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Localm
     void runCommand("Localmodal", async () => {
       await runFirstRun({
         context,
-        backend,
-        controller,
-        secrets,
+        runtime,
         provider,
         statusBar,
         output,
@@ -178,28 +190,28 @@ export async function activate(context: vscode.ExtensionContext): Promise<Localm
     });
   } else if (!integrationTest && !liveIntegration && shouldDeployOnActivation(settings.lifecycle)) {
     void runCommand("Localmodal", async () => {
-      await runWorkspaceDeployment(controller, backend, statusBar, settings.contextProfile, report);
+      await runWorkspaceDeployment(runtime, statusBar, settings.contextProfile, report);
     });
   }
 
   return {
-    getStatus: () => backend.status(),
+    getStatus: () => runtime.status(),
     resolveInferenceMcpServer: async () => {
       const [server] = mcpProvider.provideMcpServerDefinitions();
-      return mcpProvider.resolveMcpServerDefinition(
-        server,
-        new vscode.CancellationTokenSource().token,
-      );
+      return server;
     },
   };
 }
 
 export async function deactivate(): Promise<void> {
   const settings = readSettings();
-  if (activeController && shouldStopOnDeactivation(settings.lifecycle)) {
-    await activeController.stop();
+  await activeMcpHost?.close();
+  activeMcpHost = undefined;
+  if (activeRuntime && shouldStopOnDeactivation(settings.lifecycle, activeDeploymentManaged)) {
+    await activeRuntime.stop();
   }
-  activeController = undefined;
+  activeRuntime = undefined;
+  activeDeploymentManaged = false;
 }
 
 function readSettings() {
@@ -210,8 +222,8 @@ function readSettings() {
   };
 }
 
-async function updateStatusBar(statusBar: vscode.StatusBarItem, backend: LifecycleBackend): Promise<void> {
-  const status = await backend.status();
+async function updateStatusBar(statusBar: vscode.StatusBarItem, runtime: LocalmodalRuntime): Promise<void> {
+  const status = await runtime.status();
   statusBar.text = `$(server) Qwen: ${status.state}`;
   statusBar.show();
 }
@@ -236,9 +248,7 @@ async function openIssueForm(): Promise<void> {
 
 interface FirstRunOptions {
   context: vscode.ExtensionContext;
-  backend: LifecycleBackend;
-  controller: ModelController;
-  secrets: VscodeSecretStore;
+  runtime: LocalmodalRuntime;
   provider: LocalmodalLanguageModelProvider;
   statusBar: vscode.StatusBarItem;
   output: vscode.OutputChannel;
@@ -269,15 +279,14 @@ async function runFirstRun(options: FirstRunOptions): Promise<void> {
 
       progress.report({ message: "waiting for Proxy Token" });
       options.report("onboarding: resolving Proxy Token");
-      const token = await options.secrets.get("modalProxyToken");
-      if (!token) {
+      if (!await options.runtime.resolveCredential()) {
         options.report("onboarding: cancelled before deployment");
         return;
       }
 
       progress.report({ message: "checking Modal CLI" });
       options.report("onboarding: checking Modal CLI");
-      const cliStatus = await options.backend.status();
+      const cliStatus = await options.runtime.status();
       if (cliStatus.state === "error") {
         throw new Error(cliStatus.detail ?? "Modal CLI setup is required before connecting Qwen.");
       }
@@ -286,13 +295,13 @@ async function runFirstRun(options: FirstRunOptions): Promise<void> {
       if (shouldDeployAfterOnboarding(settings.lifecycle)) {
         progress.report({ message: "deploying Modal app; first build may take several minutes" });
         options.report("onboarding: deploying Modal app");
-        await options.controller.ensureDeployed(QWEN38_27B.id, settings.contextProfile);
+        await options.runtime.ensureDeployed(QWEN38_27B.id, settings.contextProfile);
       } else {
         progress.report({ message: "connected; waiting for first Copilot request" });
       }
       await options.context.globalState.update(ONBOARDING_STATE_KEY, true);
       options.provider.refresh();
-      await updateStatusBar(options.statusBar, options.backend);
+      await updateStatusBar(options.statusBar, options.runtime);
       vscode.window.showInformationMessage(
         "Localmodal is connected. Select Qwen3.8-27B in Copilot Chat and send a request.",
       );
@@ -301,8 +310,7 @@ async function runFirstRun(options: FirstRunOptions): Promise<void> {
 }
 
 async function runWorkspaceDeployment(
-  controller: ModelController,
-  backend: LifecycleBackend,
+  runtime: LocalmodalRuntime,
   statusBar: vscode.StatusBarItem,
   profile: string,
   report: (message: string) => void,
@@ -317,10 +325,10 @@ async function runWorkspaceDeployment(
       progress.report({ message: "Modal is starting; first build may take several minutes" });
       report("workspace lifecycle: deploying Modal app");
       statusBar.text = "$(sync~spin) Qwen: deploying";
-      await controller.ensureDeployed(QWEN38_27B.id, profile);
+      await runtime.ensureDeployed(QWEN38_27B.id, profile);
       progress.report({ message: "deployment registered" });
       report("workspace lifecycle: deployment registered");
-      await updateStatusBar(statusBar, backend);
+      await updateStatusBar(statusBar, runtime);
     },
   );
 }

@@ -8,26 +8,29 @@ Complete when the extension settings, model picker, workspace lifecycle, streame
 -> lm/witness
 > Scope is one extension, one Qwen model, one Modal backend, and one Copilot Chat provider. Test doubles prove the interfaces; they are not product choices.
 > Human-owned specification remains design authority. This VINE owns execution order and evidence.
+> LocalmodalRuntime is the sole runtime authority; Copilot, commands, and MCP adapt protocols to the same deployment, credential, inference, and stream implementation.
 @guidance text/markdown human-owned-spec/initial-spec.md
 ---
 [lm/witness] Validate the extension end to end (notstarted)
 Run the extension in an Extension Development Host against the deployed Modal app and use the extension-provided model delegation MCP server.
 Accept: Qwen appears in the Copilot Chat model picker, a streamed text response completes, `delegate` completes through the deployed endpoint and its result returns to Qwen, workspace lifecycle behavior is observed, and Stop preserves the cache Volumes.
--> lm/provider
--> lm/lifecycle
 -> lm/deployment
+-> lm/lifecycle
 -> lm/mcp
+-> lm/provider
 ---
 [lm/provider] Implement the Copilot Chat provider (started)
-Register the model through vscode.lm.registerLanguageModelChatProvider and translate VS Code messages, images, tools, tool results, reasoning, and streamed Chat Completions deltas. Register the dynamic MCP provider alongside it without adding workspace MCP configuration.
-Accept: the provider compiles against the VS Code API and its model catalog is exercised by contract tests without a Modal dependency.
+Register the model through vscode.lm.registerLanguageModelChatProvider and translate VS Code messages, images, tools, tool results, reasoning, and streamed deltas to and from the shared LocalmodalRuntime. Register the dynamic MCP provider alongside it without adding workspace MCP configuration.
+Accept: the provider contains only VS Code protocol adaptation, compiles against the VS Code API, and does not construct inference requests or parse endpoint streams.
 -> lm/contracts
 -> lm/model
+-> lm/runtime
 ---
 [lm/lifecycle] Implement extension-owned lifecycle and configuration (started)
 Expose only lifecycle and context preferences, activation-time Connect Qwen onboarding, lazy SecretStorage-backed Proxy Token acquisition, Start/Status/Stop commands, workspace and on-demand policies, and the Modal CLI adapter. Keep app name, GPU, deployment file, model, and engine as product constants.
-Accept: a fake backend and pure policy tests prove the two lifecycle modes; first activation can be completed or deferred without a partial deploy; the real adapter can deploy, report status, wait for readiness, and stop without putting credentials or deployment choices in user settings.
+Accept: first activation can be completed or deferred without a partial deploy; cleanup requires both current workspace policy and deployment ownership; cancellation reaches Modal subprocesses; Proxy Tokens never enter child environments.
 -> lm/contracts
+-> lm/runtime
 ---
 [lm/deployment] Parameterize the one Modal deployment (started)
 Keep one vLLM deployment artifact for Qwen3.8-27B, accept model revision/profile/GPU at deploy time, persist model and vLLM caches, require Proxy Token auth, and cap the app at one container.
@@ -36,8 +39,9 @@ Accept: the artifact compiles and the selected 128K profile can be deployed for 
 -> lm/tests/modal-startup
 ---
 [lm/mcp] Pack the model delegation MCP server (reviewing)
-Bundle a stdio MCP server in the extension with `delegate`, `up`, and `down` tools. Resolve configuration and Proxy Token at server start without blocking on GPU readiness; perform best-effort startup on delegate.
-Accept: no `.vscode/mcp.json` is required, the server is dynamically discoverable, connects immediately over stdio, and a real Copilot tool call can invoke `delegate` against the deployed Chat Completions endpoint.
+Expose `delegate`, `up`, and `down` through an authenticated loopback Streamable HTTP MCP endpoint hosted by the extension. Each MCP protocol session closes over the shared LocalmodalRuntime and owns no deployment, credential cache, request builder, or stream parser.
+Accept: no `.vscode/mcp.json` or child MCP process is required, the endpoint is dynamically discoverable without GPU readiness, unauthenticated requests fail, and MCP progress/cancellation reach the shared runtime.
+-> lm/runtime
 -> lm/tests/mcp
 ---
 [lm/model] Define the Qwen model and context profiles (reviewing)
@@ -49,35 +53,40 @@ Accept: the model catalog is the only production catalog, and the picker exposes
 Keep the extension core dependent on ModelCatalog, LifecycleBackend, StateStore, and SecretStore interfaces. Use fixture/fake/memory implementations only in contract tests. The test suite is the proof of the user-facing configuration contract.
 Accept: tests exercise the controller with alternate implementations without importing Modal or VS Code runtime objects, the manifest exposes only lifecycle/context settings, the token is lazy and preflighted, the picker exposes one Qwen model per profile, and workspace/on-demand policies make their intended decisions.
 -> lm/tests/config
--> lm/tests/token
 -> lm/tests/picker
 -> lm/tests/policy
 -> lm/tests/scenarios
+-> lm/tests/token
 ---
 [lm/tests/config] Test the public configuration surface (reviewing)
 Assert from the extension manifest and product constants that lifecycle and context profile are the only user settings; Modal command, app name, deployment file, GPU, model revision, and engine remain fixed product choices.
 Accept: the test fails if a deployment-only setting is reintroduced into the contributed configuration.
 ---
-[lm/tests/token] Test the lazy wire-token wizard (reviewing)
-Exercise stored-token, environment-token, dashboard-linked prompted-token, separate/combined input normalization, cancellation, and controller preflight paths. A missing token must be observed before backend status or deployment.
-Accept: the token is never read during deployment-only setup, is stored only through SecretStorage, and cancellation leaves the backend untouched.
+[lm/tests/token] Test lazy Proxy Token ownership (reviewing)
+Exercise stored-token, environment-token, dashboard-linked prompted-token, separate/combined input normalization, cancellation, and runtime preflight paths. A missing token must be observed before backend status or deployment.
+Accept: deployment-only setup does not read the token, each ready/inference operation reads one token snapshot, only SecretStorage persists it, Modal CLI children never inherit it, and cancellation leaves the backend untouched.
 ---
 [lm/tests/picker] Test Copilot-only model selection (reviewing)
 Exercise the production catalog presentation for each context profile. Keep one Qwen model in the picker, with measured state and token limits explicit; no localmodal model setting participates.
 Accept: the test fails if a second selection ceremony or an unsupported measurement claim is introduced.
 ---
 [lm/tests/policy] Test workspace and on-demand policy decisions (reviewing)
-Exercise the pure activation/deactivation policy functions and the controller's deploy-versus-ready paths with fake backends.
-Accept: workspace deploys/stops with the extension lifecycle; on-demand waits for the first request and does not auto-stop.
+Exercise the pure activation/deactivation policy functions and the runtime's deploy-versus-ready paths with fake backends.
+Accept: workspace deploys/stops only when this activation managed a deployment; cancelled onboarding is non-owning; on-demand waits for the first request and does not auto-stop.
 ---
-[lm/tests/mcp] Test the packed MCP protocol path (reviewing)
-Spawn the bundled `dist/mcp.js` with a fixture endpoint and connect using a real MCP stdio client. List tools, verify `delegate`, `up`, and `down` tool definitions, and exercise streamed task delegation against a fixture response.
-Accept: the shipped MCP artifact speaks MCP correctly, exposes exactly the three delegation and lifecycle tools, and returns streamed inference text without touching Modal.
+[lm/tests/mcp] Test the MCP protocol adapter (reviewing)
+Connect a real MCP Streamable HTTP client to the extension-hosted loopback endpoint. Verify authentication, `delegate`/`up`/`down`, live credential refresh, request progress, cancellation, malformed-stream failure, and delegation through the same runtime instance.
+Accept: the MCP adapter speaks the protocol correctly without constructing a second controller/backend or touching Modal in ordinary tests.
 ---
 [lm/tests/scenarios] Test the real Extension Host and packaging paths (reviewing)
-Exercise the canonical `@vscode/test-cli` Extension Host path with a real workspace, real extension activation, Copilot model registration, Start command, dynamic MCP provider, packed MCP stdio client, and local HTTP fixture. Keep the Windows user-Python CLI resolution and UTF-8 subprocess fixture in the unit suite; use `npm run package` only for packaging.
+Exercise the canonical `@vscode/test-cli` Extension Host path with a real workspace, real extension activation, Copilot model registration, Start command, dynamic authenticated HTTP MCP provider, and local HTTP fixture. Keep the Windows user-Python CLI resolution and UTF-8 subprocess fixture in the unit suite; use `npm run package` only for packaging.
 Accept: `npm run test:integration` opens a separate VS Code instance and passes the extension/MCP integration suite without launching Modal or consuming GPU time; `npm run package` succeeds with the runtime artifacts.
 ---
 [lm/tests/modal-startup] Measure the live Modal cold path (notstarted)
 Run the opt-in `scripts/modal-startup.mjs` job with CI Modal and Proxy Token secrets. Measure from `modal deploy` start through the first successful `/v1/models` response, then from readiness through the first streamed inference token; persist JSON metrics and stop the unique CI app in every exit path.
 Accept: the workflow fails when either explicit ceiling is exceeded and publishes the timing artifact for trend comparison; ordinary PR CI never allocates a GPU.
+---
+[lm/runtime] Establish one runtime authority (reviewing)
+Own deployment, credentials, endpoint state, inference request construction, stream parsing, cancellation, progress, and operation serialization in one extension-hosted runtime. Copilot, commands, and MCP receive that same runtime instance.
+Accept: no production adapter constructs another controller/backend or caches credentials; one request uses one token snapshot; Stop cannot race active inference; malformed streams fail and release the response body.
+-> lm/contracts

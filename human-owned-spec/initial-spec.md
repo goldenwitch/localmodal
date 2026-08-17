@@ -45,6 +45,11 @@ objects:
 3. `StateStore` and `SecretStore` persist endpoint state and credentials.
    Production uses VS Code workspace state and SecretStorage; tests use memory
    stores.
+4. `LocalmodalRuntime` is the sole runtime authority. It serializes lifecycle
+  and inference operations and owns credential resolution, endpoint use,
+  request construction, and streamed response parsing. The Copilot provider,
+  commands, and MCP tools adapt their protocols to this same instance; none
+  constructs another controller, backend, credential cache, or wire parser.
 
 The test implementations are the second implementation of each seam. They are
 not advertised as user-selectable products and do not create future production
@@ -80,17 +85,21 @@ before it becomes a product option.
 - The provider registers the fixed Qwen model through
   `vscode.lm.registerLanguageModelChatProvider`; Copilot's picker is the sole
   model-selection UI.
-- The extension dynamically provides a stdio MCP server with `delegate`, `up`,
-  and `down` tools. No workspace MCP file is required.
-- When the MCP server starts, the extension resolves configuration and Proxy
-  Token without blocking on GPU readiness; the MCP server process starts
-  immediately over stdio.
+- The extension dynamically provides an authenticated loopback Streamable HTTP
+  MCP server with `delegate`, `up`, and `down` tools. No workspace MCP file or
+  child MCP process is required.
+- The MCP endpoint starts with the extension and does not block on GPU
+  readiness. Its random per-activation bearer authenticates loopback transport
+  access only; the Modal Proxy Token remains in SecretStorage and is resolved
+  by the shared runtime for each operation.
 - `delegate` accepts a task and optional context to execute inference on the
   remote model; if the deployment is stopped or cold, it performs best-effort
   startup (`up`) and emits progress before fulfilling the request.
 - `up` explicitly deploys and warms the endpoint, returning readiness timing.
 - `down` explicitly stops the active Modal deployment to halt compute billing
   while preserving cache Volumes.
+- MCP cancellation and progress use the request-scoped MCP protocol fields and
+  flow through the same runtime operations used by Copilot and commands.
 - Copilot requests are translated to Qwen Chat Completions requests.
 - Text, streamed reasoning, images, tool definitions, tool results, and
   streamed tool calls are translated across the boundary.
@@ -99,12 +108,16 @@ before it becomes a product option.
     the extension deactivates; the first request warms the GPU.
   - `on-demand`: deploy and warm only when Copilot sends the first request.
 - The explicit Start and Stop commands remain available in both policies.
+- Runtime operations are serialized so explicit Stop cannot race deployment,
+  readiness, or an active inference request.
 - The extension never writes a personal endpoint or token to tracked files.
 
-Workspace shutdown cleanup is best-effort because VS Code extension
-deactivation is not a guaranteed process-lifecycle hook. Modal's own
-scale-to-zero behavior remains the compute safety net; Stop is the explicit
-destructive app-control operation and preserves the cache Volumes.
+Workspace shutdown cleanup is attempted only when this activation successfully
+managed a deployment and the current policy is `workspace`. It remains
+best-effort because VS Code extension deactivation is not a guaranteed
+process-lifecycle hook. Modal's own scale-to-zero behavior remains the compute
+safety net; Stop is the explicit destructive app-control operation and
+preserves the cache Volumes.
 
 ## 6. Test obligations
 
@@ -120,22 +133,27 @@ The automated suite must keep these claims executable:
   with measurement state visible.
 7. Workspace and on-demand policies make opposite activation/deactivation
   decisions.
-8. The controller accepts fixture catalogs, fake backends, and memory stores
-  through the same interfaces.
-9. The bundled MCP server passes a real stdio client test, lists `delegate`,
-  `up`, and `down` tools, and exercises streamed task delegation against a
-  fixture endpoint.
+8. The runtime and controller accept fixture catalogs, fake backends, memory
+  stores, and live credential changes through the same interfaces.
+9. The extension-hosted MCP server passes a real Streamable HTTP client test,
+  rejects unauthenticated loopback requests, lists `delegate`, `up`, and `down`,
+  and exercises progress, cancellation, malformed streams, and delegation
+  against the shared runtime.
 10. The canonical VS Code Extension Host suite opens a separate VS Code
   instance, activates the real extension, observes the Copilot model
   registration, executes the Start command, resolves the dynamic MCP
-  provider, and calls the packed MCP tools against a local HTTP fixture; it
+  provider, and calls the extension-hosted MCP tools against a local HTTP fixture; it
   does not start Modal or consume GPU time.
-11. The Modal child-process environment forces UTF-8 and a full local backend
-  subprocess fixture captures Unicode CLI output and parses a deploy URL.
+11. The Modal child-process environment forces UTF-8, excludes the Proxy Token,
+  and a full local backend subprocess fixture captures Unicode CLI output and
+  parses a deploy URL.
 12. First activation offers Connect Qwen, cancellation leaves Modal untouched,
   and the command can rerun setup after a Later choice.
 13. The opt-in Modal startup job records deploy-to-ready and ready-to-first-token
   timings and fails against explicit ceilings, with app cleanup in all paths.
+14. One runtime contract proves request credentials are read once, request
+  invariants cannot be overwritten, response bodies are released on parse
+  failure, and Stop cannot race active inference.
 
 ## 7. Acceptance
 

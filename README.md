@@ -5,6 +5,8 @@ Use one Modal-hosted Qwen model in GitHub Copilot Chat from VS Code.
 The extension owns configuration, encrypted credential storage, Modal
 deployment lifecycle, model selection, the streamed Copilot Chat provider, and
 an MCP server for model delegation and lifecycle management (`delegate`, `up`, `down`).
+One extension-owned runtime implements deployment, credentials, inference, and
+stream parsing; Copilot and MCP are adapters over that same runtime.
 The current production target is
 [Qwen/Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B) at Hub revision
 `1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0`, served by vLLM on one Modal
@@ -107,8 +109,8 @@ npm run test:integration
 This downloads/launches a separate VS Code instance, opens this workspace,
 activates the real extension, verifies the Copilot model registration, invokes
 the real Start command, resolves the dynamic MCP provider, and calls the
-packed MCP tools against a local HTTP fixture. It does not start Modal or
-consume GPU time.
+extension-hosted MCP tools against a local HTTP fixture. It does not start
+Modal or consume GPU time.
 
 The same suite is available from the `Run localmodal Extension Tests` launch
 configuration. For the real cloud validation, run:
@@ -120,7 +122,7 @@ npm run test:integration:live
 ```
 
 The live test label deploys the real Modal app, resolves the real endpoint through
-the extension, and invokes the packed MCP tools against it. It is opt-in and
+the extension, and invokes the extension-hosted MCP tools against it. It is opt-in and
 incurs GPU cost; the scheduled/manual CI workflow runs the same label with
 repository secrets and stops the unique test app afterward.
 
@@ -191,8 +193,9 @@ the authoritative indication that the subprocess is still producing progress.
 
 The extension dynamically provides an MCP server named `localmodal`. No
 `.vscode/mcp.json` file or separate MCP installation is needed. When VS Code or
-an agent starts the server, localmodal connects over stdio immediately,
-injecting credentials and configuration without blocking on GPU provisioning.
+an agent connects, it uses an authenticated loopback Streamable HTTP endpoint
+that is already hosted by the extension and does not block on GPU provisioning.
+The loopback bearer is random per activation and is not the Modal Proxy Token.
 
 The server exposes three tools:
 
@@ -217,7 +220,7 @@ The `localmodal.lifecycle` setting has two modes.
 
 | Mode | Behavior |
 | --- | --- |
-| `workspace` | Deploy the Modal app when the extension activates; the first Copilot request warms the GPU; extension deactivation attempts to stop the app. |
+| `workspace` | Deploy the Modal app when the extension activates; the first Copilot request warms the GPU; extension deactivation attempts to stop a deployment managed by that activation. |
 | `on-demand` | Wait to deploy and warm the app until the first model request; stop explicitly with the Stop command. |
 
 Deploying the app is not the same as running the GPU. Modal scales the web
@@ -269,7 +272,10 @@ inline suggestions, semantic search, or other Copilot services outside chat.
 The extension core has explicit `ModelCatalog`, `LifecycleBackend`,
 `StateStore`, and `SecretStore` interfaces. Production uses Qwen, Modal, and
 VS Code; contract tests use fixture, fake, and memory implementations to prove
-those boundaries without adding unused production paths.
+those boundaries without adding unused production paths. `LocalmodalRuntime`
+is the single operational owner above those interfaces; the VS Code provider,
+commands, and MCP tools do not duplicate its controller, credential state,
+request builder, or stream parser.
 
 The design authority is [human-owned-spec/initial-spec.md](human-owned-spec/initial-spec.md).
 The execution graph is [localmodal.vine](localmodal.vine).

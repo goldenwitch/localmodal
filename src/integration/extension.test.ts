@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createServer, type Server } from "node:http";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import * as vscode from "vscode";
 import type { LocalmodalExtensionApi } from "../extension";
 
@@ -76,17 +76,20 @@ suite("localmodal Extension Host", () => {
     }
     assert.equal((await api.getStatus()).state, "deployed");
 
+    const [model] = await vscode.lm.selectChatModels({ vendor: "localmodal" });
+    assert.ok(model);
+    const providerResponse = await model.sendRequest([
+      vscode.LanguageModelChatMessage.User("prove the provider path"),
+    ]);
+    let providerText = "";
+    for await (const chunk of providerResponse.text) {
+      providerText += chunk;
+    }
+    assert.match(providerText, live ? /model=Qwen\/Qwen3\.8-27B/ : /extension-host fixture response/);
+
     const definition = await api.resolveInferenceMcpServer();
-    const environment = Object.fromEntries(
-      Object.entries({ ...process.env, ...definition.env })
-        .filter(([, value]) => typeof value === "string"),
-    ) as Record<string, string>;
-    const transport = new StdioClientTransport({
-      command: definition.command,
-      args: definition.args,
-      cwd: definition.cwd?.fsPath,
-      env: environment,
-      stderr: "pipe",
+    const transport = new StreamableHTTPClientTransport(new URL(definition.uri.toString()), {
+      requestInit: { headers: definition.headers },
     });
     const client = new Client(
       { name: "localmodal-extension-host-test", version: "0.0.1" },
